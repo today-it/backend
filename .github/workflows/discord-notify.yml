@@ -1,0 +1,360 @@
+name: Discord GitHub 알림
+
+on:
+  issues:
+    types:
+      - opened
+      - closed
+      - reopened
+
+  issue_comment:
+    types:
+      - created
+
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - closed
+      - ready_for_review
+
+  pull_request_review:
+    types:
+      - submitted
+
+  pull_request_review_comment:
+    types:
+      - created
+
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Discord 알림 전송
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Discord 메시지 전송
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          EVENT="${{ github.event_name }}"
+          ACTION="$(jq -r '.action // ""' "$GITHUB_EVENT_PATH")"
+
+          EMBED_TITLE=""
+          DESCRIPTION=""
+          URL=""
+          USER=""
+          USER_URL=""
+          AVATAR=""
+          LABELS=""
+          BRANCH_INFO=""
+          COLOR="9213343"
+
+          REPOSITORY="$(jq -r '.repository.full_name' "$GITHUB_EVENT_PATH")"
+          REPOSITORY_AVATAR="$(jq -r '.repository.owner.avatar_url' "$GITHUB_EVENT_PATH")"
+
+          case "$EVENT" in
+
+            issues)
+              NUMBER="$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")"
+              TITLE="$(jq -r '.issue.title' "$GITHUB_EVENT_PATH")"
+              URL="$(jq -r '.issue.html_url' "$GITHUB_EVENT_PATH")"
+
+              # 이슈 작성자
+              USER="$(jq -r '.issue.user.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.issue.user.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.issue.user.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              LABELS="$(jq -r '[.issue.labels[]?.name | "`" + . + "`"] | join(" ")' "$GITHUB_EVENT_PATH")"
+
+              case "$ACTION" in
+                opened)
+                  EMBED_TITLE="📝 Issue #${NUMBER} 생성"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="9213343"
+                  ;;
+
+                closed)
+                  EMBED_TITLE="☑️ Issue #${NUMBER} 완료"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="8540383"
+                  ;;
+
+                reopened)
+                  EMBED_TITLE="📝 Issue #${NUMBER} 재오픈"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="9213343"
+                  ;;
+              esac
+              ;;
+
+
+            issue_comment)
+              NUMBER="$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")"
+              TITLE="$(jq -r '.issue.title' "$GITHUB_EVENT_PATH")"
+              URL="$(jq -r '.comment.html_url' "$GITHUB_EVENT_PATH")"
+
+              # 댓글 작성자
+              USER="$(jq -r '.comment.user.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.comment.user.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.comment.user.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              LABELS="$(jq -r '[.issue.labels[]?.name | "`" + . + "`"] | join(" ")' "$GITHUB_EVENT_PATH")"
+
+              IS_PR="$(jq -r '.issue.pull_request != null' "$GITHUB_EVENT_PATH")"
+
+              if [ "$IS_PR" = "true" ]; then
+                EMBED_TITLE="💬 PR #${NUMBER} 댓글"
+              else
+                EMBED_TITLE="💬 Issue #${NUMBER} 댓글"
+              fi
+
+              DESCRIPTION="${TITLE}"
+              COLOR="616922"
+              ;;
+
+
+            pull_request)
+              NUMBER="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+              TITLE="$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")"
+              URL="$(jq -r '.pull_request.html_url' "$GITHUB_EVENT_PATH")"
+
+              # PR 작성자
+              USER="$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.pull_request.user.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.pull_request.user.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              HEAD="$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH")"
+              BASE="$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")"
+              MERGED="$(jq -r '.pull_request.merged' "$GITHUB_EVENT_PATH")"
+
+              LABELS="$(jq -r '[.pull_request.labels[]?.name | "`" + . + "`"] | join(" ")' "$GITHUB_EVENT_PATH")"
+
+              BRANCH_INFO="\`${HEAD}\` → \`${BASE}\`"
+
+              case "$ACTION" in
+                opened)
+                  EMBED_TITLE="🏃 PR #${NUMBER} 생성"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="13706287"
+                  ;;
+
+                reopened)
+                  EMBED_TITLE="🏃 PR #${NUMBER} 재오픈"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="13706287"
+                  ;;
+
+                ready_for_review)
+                  EMBED_TITLE="👀 PR #${NUMBER} 리뷰 준비 완료"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="12551936"
+                  ;;
+
+                closed)
+                  if [ "$MERGED" = "true" ]; then
+                    EMBED_TITLE="☑️ PR #${NUMBER} Merge"
+                    DESCRIPTION="${TITLE}"
+                    COLOR="8540383"
+                  else
+                    EMBED_TITLE="⛔ PR #${NUMBER} 종료"
+                    DESCRIPTION="${TITLE}"
+                    COLOR="13574702"
+                  fi
+                  ;;
+              esac
+              ;;
+
+
+            pull_request_review)
+              NUMBER="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+              TITLE="$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")"
+              URL="$(jq -r '.review.html_url // .pull_request.html_url' "$GITHUB_EVENT_PATH")"
+
+              # 리뷰 작성자
+              USER="$(jq -r '.review.user.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.review.user.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.review.user.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              STATE="$(jq -r '.review.state' "$GITHUB_EVENT_PATH")"
+
+              HEAD="$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH")"
+              BASE="$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")"
+
+              LABELS="$(jq -r '[.pull_request.labels[]?.name | "`" + . + "`"] | join(" ")' "$GITHUB_EVENT_PATH")"
+
+              BRANCH_INFO="\`${HEAD}\` → \`${BASE}\`"
+
+              case "$STATE" in
+                approved)
+                  EMBED_TITLE="👆 PR #${NUMBER} 승인"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="12536714"
+                  ;;
+
+                changes_requested)
+                  EMBED_TITLE="↩️ PR #${NUMBER} 변경 요청"
+                  DESCRIPTION="${TITLE}"
+                  COLOR="12551936"
+                  ;;
+
+                *)
+                  exit 0
+                  ;;
+              esac
+              ;;
+
+
+            pull_request_review_comment)
+              NUMBER="$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")"
+              TITLE="$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")"
+              URL="$(jq -r '.comment.html_url' "$GITHUB_EVENT_PATH")"
+
+              # 코드 리뷰 댓글 작성자
+              USER="$(jq -r '.comment.user.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.comment.user.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.comment.user.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              HEAD="$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH")"
+              BASE="$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH")"
+
+              LABELS="$(jq -r '[.pull_request.labels[]?.name | "`" + . + "`"] | join(" ")' "$GITHUB_EVENT_PATH")"
+
+              BRANCH_INFO="\`${HEAD}\` → \`${BASE}\`"
+
+              EMBED_TITLE="👀 PR #${NUMBER} 코드 리뷰 댓글"
+              DESCRIPTION="${TITLE}"
+              COLOR="12551936"
+              ;;
+
+
+            push)
+              DELETED="$(jq -r '.deleted // false' "$GITHUB_EVENT_PATH")"
+
+              if [ "$DELETED" = "true" ]; then
+                exit 0
+              fi
+
+              REF="$(jq -r '.ref' "$GITHUB_EVENT_PATH")"
+              BRANCH="${REF#refs/heads/}"
+
+              USER="$(jq -r '.sender.login' "$GITHUB_EVENT_PATH")"
+              USER_URL="$(jq -r '.sender.html_url' "$GITHUB_EVENT_PATH")"
+              AVATAR="$(jq -r '.sender.avatar_url' "$GITHUB_EVENT_PATH")"
+
+              URL="$(jq -r '.compare // .repository.html_url' "$GITHUB_EVENT_PATH")"
+
+              COUNT="$(jq -r '.commits | length' "$GITHUB_EVENT_PATH")"
+
+              COMMIT_MESSAGE="$(
+                jq -r '.head_commit.message // "커밋 정보 없음"' "$GITHUB_EVENT_PATH" |
+                head -n 1
+              )"
+
+              EMBED_TITLE="📦 ${BRANCH} Push"
+
+              DESCRIPTION="${COMMIT_MESSAGE}
+
+          **${COUNT}개 커밋**"
+
+              COLOR="10906156"
+              ;;
+          esac
+
+
+          if [ -z "$EMBED_TITLE" ]; then
+            exit 0
+          fi
+
+
+          FIELDS='[]'
+
+
+          if [ -n "$BRANCH_INFO" ]; then
+            FIELDS="$(
+              echo "$FIELDS" |
+              jq \
+                --arg value "$BRANCH_INFO" \
+                '. + [{
+                  name: "Branch",
+                  value: $value,
+                  inline: false
+                }]'
+            )"
+          fi
+
+
+          if [ -n "$LABELS" ]; then
+            FIELDS="$(
+              echo "$FIELDS" |
+              jq \
+                --arg value "$LABELS" \
+                '. + [{
+                  name: "Labels",
+                  value: $value,
+                  inline: false
+                }]'
+            )"
+          fi
+
+
+          PAYLOAD="$(
+            jq -n \
+              --arg username "Today IT" \
+              --arg webhook_avatar "$REPOSITORY_AVATAR" \
+              --arg title "$EMBED_TITLE" \
+              --arg description "$DESCRIPTION" \
+              --arg url "$URL" \
+              --arg user "$USER" \
+              --arg user_url "$USER_URL" \
+              --arg avatar "$AVATAR" \
+              --arg repository "$REPOSITORY" \
+              --argjson color "$COLOR" \
+              --argjson fields "$FIELDS" \
+              '{
+                username: $username,
+                avatar_url: $webhook_avatar,
+
+                embeds: [
+                  {
+                    title: $title,
+                    description: $description,
+                    url: $url,
+                    color: $color,
+
+                    author: {
+                      name: $user,
+                      url: $user_url,
+                      icon_url: $avatar
+                    },
+
+                    fields: $fields,
+
+                    footer: {
+                      text: $repository
+                    }
+                  }
+                ]
+              }'
+          )"
+
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
