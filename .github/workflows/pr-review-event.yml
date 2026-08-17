@@ -1,0 +1,36 @@
+name: PR 리뷰 이벤트 수집
+
+on:
+  pull_request_review:
+    types:
+      - submitted
+
+  pull_request_review_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: PR 리뷰 이벤트 저장
+    runs-on: ubuntu-latest
+
+    if: >-
+      github.event.pull_request.base.ref == 'main' ||
+      github.event.pull_request.base.ref == 'develop'
+
+    steps:
+      - name: 리뷰 이벤트 저장
+        shell: bash
+        run: |
+          cp "$GITHUB_EVENT_PATH" "$RUNNER_TEMP/pr-review-event.json"
+
+      - name: 리뷰 이벤트 Artifact 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-review-event
+          path: ${{ runner.temp }}/pr-review-event.json
+          retention-days: 1
+          if-no-files-found: error

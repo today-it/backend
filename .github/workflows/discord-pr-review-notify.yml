@@ -1,0 +1,265 @@
+name: Discord PR 리뷰 알림
+
+on:
+  workflow_run:
+    workflows:
+      - PR 리뷰 이벤트 수집
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  notify:
+    name: Discord PR 리뷰 알림 전송
+    runs-on: ubuntu-latest
+
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: 리뷰 이벤트 Artifact 다운로드
+        uses: actions/download-artifact@v5
+        with:
+          name: pr-review-event
+          path: ${{ runner.temp }}/pr-review-event
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Discord 메시지 전송
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          EVENT_FILE="$RUNNER_TEMP/pr-review-event/pr-review-event.json"
+
+          REPOSITORY="$(jq -r '.repository.full_name' "$EVENT_FILE")"
+          REPOSITORY_AVATAR="$(jq -r '.repository.owner.avatar_url' "$EVENT_FILE")"
+
+          NUMBER="$(jq -r '.pull_request.number' "$EVENT_FILE")"
+          TITLE="$(jq -r '.pull_request.title' "$EVENT_FILE")"
+
+          HEAD="$(jq -r '.pull_request.head.ref' "$EVENT_FILE")"
+          BASE="$(jq -r '.pull_request.base.ref' "$EVENT_FILE")"
+
+          LABELS="$(
+            jq -r \
+              '[.pull_request.labels[]?.name | "`" + . + "`"] | join(" ")' \
+              "$EVENT_FILE"
+          )"
+
+          BRANCH_INFO="\`${HEAD}\` → \`${BASE}\`"
+
+          EMBED_TITLE=""
+          DESCRIPTION=""
+          URL=""
+          USER=""
+          USER_URL=""
+          AVATAR=""
+          COLOR="12551936"
+
+
+          truncate_text() {
+            local text="$1"
+            local limit="$2"
+
+            printf '%s' "$text" |
+              jq -Rs -r \
+                --argjson limit "$limit" \
+                '
+                  if length > $limit then
+                    .[0:$limit] +
+                    "\n\n... (내용이 길어 일부 생략되었습니다. 제목을 눌러 GitHub에서 전체 내용을 확인해주세요.)"
+                  else
+                    .
+                  end
+                '
+          }
+
+
+          build_description() {
+            local title="$1"
+            local body="$2"
+
+            if [ -n "$body" ]; then
+              BODY_TEXT="$(truncate_text "$body" 3300)"
+
+              DESCRIPTION="**${title}**
+
+          ${BODY_TEXT}"
+            else
+              DESCRIPTION="${title}"
+            fi
+          }
+
+
+          if jq -e '.review != null' "$EVENT_FILE" > /dev/null; then
+
+            STATE="$(jq -r '.review.state' "$EVENT_FILE")"
+            REVIEW_BODY="$(jq -r '.review.body // ""' "$EVENT_FILE")"
+
+            USER="$(jq -r '.review.user.login' "$EVENT_FILE")"
+            USER_URL="$(jq -r '.review.user.html_url' "$EVENT_FILE")"
+            AVATAR="$(jq -r '.review.user.avatar_url' "$EVENT_FILE")"
+
+            URL="$(
+              jq -r \
+                '.review.html_url // .pull_request.html_url' \
+                "$EVENT_FILE"
+            )"
+
+            case "$STATE" in
+
+              approved)
+                EMBED_TITLE="👆 PR #${NUMBER} 승인"
+
+                build_description "$TITLE" "$REVIEW_BODY"
+
+                COLOR="12536714"
+                ;;
+
+              changes_requested)
+                EMBED_TITLE="↩️ PR #${NUMBER} 변경 요청"
+
+                build_description "$TITLE" "$REVIEW_BODY"
+
+                COLOR="12551936"
+                ;;
+
+              commented)
+                # 리뷰 본문 없이 코드 라인 댓글만 있는 경우
+                # pull_request_review_comment에서 별도로 전송하므로 제외
+                if [ -z "$REVIEW_BODY" ]; then
+                  exit 0
+                fi
+
+                EMBED_TITLE="👀 PR #${NUMBER} 리뷰 댓글"
+
+                build_description "$TITLE" "$REVIEW_BODY"
+
+                COLOR="12551936"
+                ;;
+
+              *)
+                exit 0
+                ;;
+
+            esac
+
+
+          elif jq -e '.comment != null' "$EVENT_FILE" > /dev/null; then
+
+            COMMENT_BODY="$(jq -r '.comment.body // ""' "$EVENT_FILE")"
+
+            USER="$(jq -r '.comment.user.login' "$EVENT_FILE")"
+            USER_URL="$(jq -r '.comment.user.html_url' "$EVENT_FILE")"
+            AVATAR="$(jq -r '.comment.user.avatar_url' "$EVENT_FILE")"
+
+            URL="$(jq -r '.comment.html_url' "$EVENT_FILE")"
+
+            EMBED_TITLE="👀 PR #${NUMBER} 코드 리뷰 댓글"
+
+            build_description "$TITLE" "$COMMENT_BODY"
+
+            COLOR="12551936"
+
+          else
+            exit 0
+          fi
+
+
+          if [ -z "$EMBED_TITLE" ]; then
+            exit 0
+          fi
+
+
+          FIELDS='[]'
+
+
+          if [ -n "$BRANCH_INFO" ]; then
+            FIELDS="$(
+              echo "$FIELDS" |
+              jq \
+                --arg value "$BRANCH_INFO" \
+                '. + [{
+                  name: "Branch",
+                  value: $value,
+                  inline: false
+                }]'
+            )"
+          fi
+
+
+          if [ -n "$LABELS" ]; then
+            LABELS="$(truncate_text "$LABELS" 900)"
+
+            FIELDS="$(
+              echo "$FIELDS" |
+              jq \
+                --arg value "$LABELS" \
+                '. + [{
+                  name: "Labels",
+                  value: $value,
+                  inline: false
+                }]'
+            )"
+          fi
+
+
+          PAYLOAD="$(
+            jq -n \
+              --arg username "Today IT" \
+              --arg webhook_avatar "$REPOSITORY_AVATAR" \
+              --arg title "$EMBED_TITLE" \
+              --arg description "$DESCRIPTION" \
+              --arg url "$URL" \
+              --arg user "$USER" \
+              --arg user_url "$USER_URL" \
+              --arg avatar "$AVATAR" \
+              --arg repository "$REPOSITORY" \
+              --argjson color "$COLOR" \
+              --argjson fields "$FIELDS" \
+              '{
+                username: $username,
+                avatar_url: $webhook_avatar,
+
+                allowed_mentions: {
+                  parse: []
+                },
+
+                embeds: [
+                  {
+                    title: $title,
+                    description: $description,
+                    url: $url,
+                    color: $color,
+
+                    author: {
+                      name: $user,
+                      url: $user_url,
+                      icon_url: $avatar
+                    },
+
+                    fields: $fields,
+
+                    footer: {
+                      text: $repository
+                    }
+                  }
+                ]
+              }'
+          )"
+
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
