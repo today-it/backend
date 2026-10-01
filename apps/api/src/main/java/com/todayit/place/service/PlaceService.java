@@ -125,8 +125,7 @@ public class PlaceService {
             .orElseThrow(PlaceNotFoundException::new);
     Place.PlaceSnapshot snapshot = place.getSnapshot();
 
-    return new PlaceLocationResult(
-        snapshot.placeId(), snapshot.latitude(), snapshot.longitude(), snapshot.address());
+    return PlaceLocationResult.from(snapshot);
   }
 
   /**
