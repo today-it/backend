@@ -3,6 +3,7 @@ package com.todayit.place.controller;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -137,6 +138,29 @@ class PlaceControllerTest {
 
     // Then
     verify(placeService).scrapPlace(1, "member-1");
+  }
+
+  /** 인증된 회원의 장소 스크랩 취소 결과를 반환하는지 검증합니다. */
+  @Test
+  @DisplayName("장소 스크랩을 취소하고 남은 스크랩 수를 반환한다")
+  void cancelsPlaceScrap() throws Exception {
+    // Given
+    when(placeService.cancelPlaceScrap(1, "member-1"))
+        .thenReturn(new PlaceScrapResult(1, false, 2));
+
+    // When
+    mockMvc
+        .perform(
+            delete("/api/v1/places/1/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.placeId").value(1))
+        .andExpect(jsonPath("$.data.scrapped").value(false))
+        .andExpect(jsonPath("$.data.scrapCount").value(2));
+
+    // Then
+    verify(placeService).cancelPlaceScrap(1, "member-1");
   }
 
   /**

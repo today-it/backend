@@ -3,6 +3,7 @@ package com.todayit.place.repository;
 import com.todayit.place.entity.PlaceScrap;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +18,41 @@ public interface PlaceScrapRepository extends JpaRepository<PlaceScrap, Integer>
    * @return 회원의 장소 스크랩
    */
   Optional<PlaceScrap> findByMemberIdAndPlacePlaceId(String memberId, int placeId);
+
+  /**
+   * 취소된 회원의 장소 스크랩을 활성화합니다.
+   *
+   * @param memberId 회원 식별자
+   * @param placeId 장소 식별자
+   * @return 활성화된 스크랩 수
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update PlaceScrap scrap "
+          + "set scrap.isDeleted = false, scrap.deletedAt = null, "
+          + "scrap.updatedAt = CURRENT_TIMESTAMP "
+          + "where scrap.memberId = :memberId "
+          + "and scrap.place.placeId = :placeId "
+          + "and scrap.isDeleted = true")
+  int reactivateByMemberIdAndPlaceId(
+      @Param("memberId") String memberId, @Param("placeId") int placeId);
+
+  /**
+   * 회원의 장소 스크랩을 취소합니다.
+   *
+   * @param memberId 회원 식별자
+   * @param placeId 장소 식별자
+   * @return 취소된 스크랩 수
+   */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update PlaceScrap scrap "
+          + "set scrap.isDeleted = true, scrap.deletedAt = CURRENT_TIMESTAMP, "
+          + "scrap.updatedAt = CURRENT_TIMESTAMP "
+          + "where scrap.memberId = :memberId "
+          + "and scrap.place.placeId = :placeId "
+          + "and scrap.isDeleted = false")
+  int cancelByMemberIdAndPlaceId(@Param("memberId") String memberId, @Param("placeId") int placeId);
 
   /**
    * 장소의 활성 스크랩 수를 조회합니다.

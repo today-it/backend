@@ -9,6 +9,7 @@ import com.todayit.place.service.PlaceService;
 import com.todayit.place.service.model.PlaceSort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -93,6 +94,20 @@ public class PlaceController {
       @PathVariable int placeId, Authentication authentication) {
     return ResponseEntity.ok(
         PlaceScrapResponse.from(placeService.scrapPlace(placeId, authentication.getName())));
+  }
+
+  /**
+   * 인증된 회원의 장소 스크랩을 취소합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param authentication 인증된 회원 정보
+   * @return 장소 스크랩 결과
+   */
+  @DeleteMapping("/{placeId}/scrap")
+  public ResponseEntity<PlaceScrapResponse> cancelPlaceScrap(
+      @PathVariable int placeId, Authentication authentication) {
+    return ResponseEntity.ok(
+        PlaceScrapResponse.from(placeService.cancelPlaceScrap(placeId, authentication.getName())));
   }
 
   /**

@@ -135,11 +135,32 @@ public class PlaceService {
             .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
             .orElseThrow(PlaceNotFoundException::new);
 
-    if (placeScrapRepository.findByMemberIdAndPlacePlaceId(memberId, placeId).isEmpty()) {
+    int reactivatedCount = placeScrapRepository.reactivateByMemberIdAndPlaceId(memberId, placeId);
+    if (reactivatedCount == 0
+        && placeScrapRepository.findByMemberIdAndPlacePlaceId(memberId, placeId).isEmpty()) {
       placeScrapRepository.save(PlaceScrap.create(memberId, place));
     }
 
     return new PlaceScrapResult(placeId, true, placeScrapRepository.countActiveByPlaceId(placeId));
+  }
+
+  /**
+   * 회원의 장소 스크랩을 취소하고 장소의 활성 스크랩 수를 반환합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param memberId 회원 식별자
+   * @return 장소 스크랩 결과
+   * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
+   */
+  @Transactional
+  public PlaceScrapResult cancelPlaceScrap(int placeId, String memberId) {
+    placeRepository
+        .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
+        .orElseThrow(PlaceNotFoundException::new);
+
+    placeScrapRepository.cancelByMemberIdAndPlaceId(memberId, placeId);
+
+    return new PlaceScrapResult(placeId, false, placeScrapRepository.countActiveByPlaceId(placeId));
   }
 
   /**
