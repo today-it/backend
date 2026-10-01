@@ -131,7 +131,7 @@ public class PlaceService {
   }
 
   /**
-   * 활성화되고 삭제되지 않은 장소의 사진을 페이지 단위로 조회합니다.
+   * 활성화되고 삭제되지 않은 장소의 사진을 최신 등록순으로 페이지 단위 조회합니다.
    *
    * @param placeId 장소 식별자
    * @param page 페이지 번호
@@ -147,7 +147,12 @@ public class PlaceService {
         .orElseThrow(PlaceNotFoundException::new);
 
     Page<PlaceImage> imagePage =
-        placeImageRepository.findByPlacePlaceId(placeId, PageRequest.of(page, size));
+        placeImageRepository.findByPlacePlaceId(
+            placeId,
+            PageRequest.of(
+                page,
+                size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("placeImageId"))));
 
     return new PlaceImageListResult(
         imagePage.getContent().stream()
