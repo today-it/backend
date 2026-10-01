@@ -1,11 +1,13 @@
 package com.todayit.place.controller;
 
 import com.todayit.place.dto.response.PlaceListResponse;
+import com.todayit.place.dto.response.PlaceLocationResponse;
 import com.todayit.place.exception.PlaceInvalidRequestException;
 import com.todayit.place.service.PlaceService;
 import com.todayit.place.service.model.PlaceSort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,6 +46,17 @@ public class PlaceController {
       @RequestParam(defaultValue = "LATEST") PlaceSort sort) {
     validatePagination(page, size);
     return ResponseEntity.ok(PlaceListResponse.from(placeService.findPlaces(page, size, sort)));
+  }
+
+  /**
+   * 장소의 지도 표시 정보를 조회합니다.
+   *
+   * @param placeId 장소 식별자
+   * @return 장소 위치 응답
+   */
+  @GetMapping("/{placeId}/location")
+  public ResponseEntity<PlaceLocationResponse> findPlaceLocation(@PathVariable int placeId) {
+    return ResponseEntity.ok(PlaceLocationResponse.from(placeService.findPlaceLocation(placeId)));
   }
 
   /**

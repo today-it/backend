@@ -9,8 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.place.entity.Category;
+import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.service.PlaceService;
 import com.todayit.place.service.model.PlaceListResult;
+import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceSort;
 import java.math.BigDecimal;
@@ -123,5 +125,58 @@ class PlaceControllerTest {
 
     // Then
     verifyNoInteractions(placeService);
+  }
+
+  /**
+   * 장소의 좌표와 주소를 지도 조회 응답으로 반환하는지 검증합니다.
+   *
+   * @throws Exception MockMvc 요청 처리 중 예외
+   */
+  @Test
+  @DisplayName("장소 지도 정보를 반환한다")
+  void returnsPlaceLocation() throws Exception {
+    // Given
+    when(placeService.findPlaceLocation(1))
+        .thenReturn(
+            new PlaceLocationResult(
+                1,
+                new BigDecimal("37.57000000"),
+                new BigDecimal("126.98500000"),
+                "서울특별시 종로구 종로 1"));
+
+    // When
+    mockMvc
+        .perform(get("/api/v1/places/1/location"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.placeId").value(1))
+        .andExpect(jsonPath("$.data.latitude").value(37.57))
+        .andExpect(jsonPath("$.data.longitude").value(126.985))
+        .andExpect(jsonPath("$.data.address").value("서울특별시 종로구 종로 1"));
+
+    // Then
+    verify(placeService).findPlaceLocation(1);
+  }
+
+  /**
+   * 존재하지 않는 장소 요청을 장소 전용 404 오류로 반환하는지 검증합니다.
+   *
+   * @throws Exception MockMvc 요청 처리 중 예외
+   */
+  @Test
+  @DisplayName("존재하지 않는 장소의 지도 조회는 404 응답을 반환한다")
+  void returnsNotFoundWhenPlaceLocationDoesNotExist() throws Exception {
+    // Given
+    when(placeService.findPlaceLocation(999)).thenThrow(new PlaceNotFoundException());
+
+    // When
+    mockMvc
+        .perform(get("/api/v1/places/999/location"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+
+    // Then
+    verify(placeService).findPlaceLocation(999);
   }
 }

@@ -1,8 +1,10 @@
 package com.todayit.place.service;
 
 import com.todayit.place.entity.Place;
+import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.repository.PlaceRepository;
 import com.todayit.place.service.model.PlaceListResult;
+import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceSort;
 import java.util.List;
@@ -51,6 +53,24 @@ public class PlaceService {
         placePage.getSize(),
         placePage.getTotalElements(),
         placePage.getTotalPages());
+  }
+
+  /**
+   * 활성화되고 삭제되지 않은 장소의 지도 정보를 조회합니다.
+   *
+   * @param placeId 장소 식별자
+   * @return 장소 식별자, 좌표와 주소
+   * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
+   */
+  public PlaceLocationResult findPlaceLocation(int placeId) {
+    Place place =
+        placeRepository
+            .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
+            .orElseThrow(PlaceNotFoundException::new);
+    Place.PlaceSnapshot snapshot = place.getSnapshot();
+
+    return new PlaceLocationResult(
+        snapshot.placeId(), snapshot.latitude(), snapshot.longitude(), snapshot.address());
   }
 
   /**

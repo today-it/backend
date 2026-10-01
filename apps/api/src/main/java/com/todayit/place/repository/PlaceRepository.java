@@ -1,6 +1,7 @@
 package com.todayit.place.repository;
 
 import com.todayit.place.entity.Place;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,12 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
    * @return 조건에 맞는 장소 페이지
    */
   Page<Place> findByIsActiveTrueAndIsDeletedFalse(Pageable pageable);
+
+  /**
+   * 활성화되고 삭제되지 않은 장소를 식별자로 조회합니다.
+   *
+   * @param placeId 장소 식별자
+   * @return 조건에 맞는 장소
+   */
+  Optional<Place> findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(int placeId);
 }

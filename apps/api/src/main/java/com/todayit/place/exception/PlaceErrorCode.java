@@ -7,7 +7,10 @@ import com.todayit.common.exception.ErrorStatus;
 public enum PlaceErrorCode implements ErrorCode {
   /** 장소 목록의 페이지 번호나 크기가 올바르지 않은 경우입니다. */
   INVALID_PAGINATION(
-      "PLACE_INVALID_PAGINATION", "장소 목록 페이지 요청값이 올바르지 않습니다.", ErrorStatus.BAD_REQUEST);
+      "PLACE_INVALID_PAGINATION", "장소 목록 페이지 요청값이 올바르지 않습니다.", ErrorStatus.BAD_REQUEST),
+
+  /** 요청한 장소가 존재하지 않는 경우입니다. */
+  NOT_FOUND("PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND);
 
   /** 클라이언트에 전달할 오류 코드입니다. */
   private final String code;
