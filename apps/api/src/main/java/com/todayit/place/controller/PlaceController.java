@@ -1,5 +1,6 @@
 package com.todayit.place.controller;
 
+import com.todayit.common.pagination.PaginationValidator;
 import com.todayit.place.dto.response.PlaceImageListResponse;
 import com.todayit.place.dto.response.PlaceListResponse;
 import com.todayit.place.dto.response.PlaceLocationResponse;
@@ -118,10 +119,7 @@ public class PlaceController {
    * @throws PlaceInvalidRequestException page가 0보다 작거나 size가 1보다 작을 때
    */
   private void validatePagination(int page, int size) {
-    if (page < 0) {
-      throw new PlaceInvalidRequestException();
-    }
-    if (size <= 0) {
+    if (!PaginationValidator.isValid(page, size)) {
       throw new PlaceInvalidRequestException();
     }
   }
