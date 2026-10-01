@@ -7,7 +7,6 @@ import com.todayit.place.dto.response.PlaceImageResponse;
 import com.todayit.place.dto.response.PlaceLocationResponse;
 import com.todayit.place.dto.response.PlaceResponse;
 import com.todayit.place.dto.response.PlaceScrapResponse;
-import com.todayit.place.exception.PlaceInvalidRequestException;
 import com.todayit.place.service.PlaceService;
 import com.todayit.place.service.model.PlaceSort;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +51,7 @@ public class PlaceController {
       @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
       @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size,
       @RequestParam(defaultValue = "LATEST") PlaceSort sort) {
-    validatePagination(page, size);
+    PaginationValidator.validate(page, size);
     return ResponseEntity.ok(
         ApiResponse.success(
             PageResponse.from(placeService.findPlaces(page, size, sort), PlaceResponse::from)));
@@ -84,7 +83,7 @@ public class PlaceController {
       @PathVariable int placeId,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
       @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size) {
-    validatePagination(page, size);
+    PaginationValidator.validate(page, size);
     return ResponseEntity.ok(
         ApiResponse.success(
             PageResponse.from(
@@ -120,18 +119,5 @@ public class PlaceController {
         ApiResponse.success(
             PlaceScrapResponse.from(
                 placeService.cancelPlaceScrap(placeId, authentication.getName()))));
-  }
-
-  /**
-   * 장소 목록 조회의 페이지 요청값을 검증합니다.
-   *
-   * @param page 0 이상이어야 하는 페이지 번호
-   * @param size 1 이상이어야 하는 페이지 크기
-   * @throws PlaceInvalidRequestException page가 0보다 작거나 size가 1보다 작을 때
-   */
-  private void validatePagination(int page, int size) {
-    if (!PaginationValidator.isValid(page, size)) {
-      throw new PlaceInvalidRequestException();
-    }
   }
 }

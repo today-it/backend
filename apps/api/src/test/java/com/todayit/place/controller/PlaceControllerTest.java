@@ -177,7 +177,7 @@ class PlaceControllerTest {
         .perform(get("/api/v1/places").param("page", invalidPage))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.code").value("PLACE_INVALID_PAGINATION"));
+        .andExpect(jsonPath("$.code").value("INVALID_PAGINATION"));
 
     // Then
     verifyNoInteractions(placeService);
@@ -199,8 +199,8 @@ class PlaceControllerTest {
         .perform(get("/api/v1/places").param("size", invalidSize))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.code").value("PLACE_INVALID_PAGINATION"))
-        .andExpect(jsonPath("$.message").value("장소 목록 페이지 요청값이 올바르지 않습니다."));
+        .andExpect(jsonPath("$.code").value("INVALID_PAGINATION"))
+        .andExpect(jsonPath("$.message").value("페이지 요청값이 올바르지 않습니다."));
 
     // Then
     verifyNoInteractions(placeService);
