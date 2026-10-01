@@ -1,5 +1,6 @@
 package com.todayit.place.dto.response;
 
+import com.todayit.common.response.CommonResponse;
 import com.todayit.place.service.model.PlaceLocationResult;
 import java.math.BigDecimal;
 
@@ -9,7 +10,8 @@ import java.math.BigDecimal;
  * @param success 요청 성공 여부
  * @param data 장소 위치 정보
  */
-public record PlaceLocationResponse(boolean success, Data data) {
+public record PlaceLocationResponse(boolean success, Data data)
+    implements CommonResponse<PlaceLocationResponse.Data> {
 
   /**
    * 장소 위치 조회 결과를 API 응답으로 변환합니다.

@@ -1,5 +1,6 @@
 package com.todayit.place.dto.response;
 
+import com.todayit.common.response.CommonResponse;
 import com.todayit.place.service.model.PlaceImageListResult;
 import com.todayit.place.service.model.PlaceImageResult;
 import java.util.List;
@@ -10,7 +11,8 @@ import java.util.List;
  * @param success 요청 성공 여부
  * @param data 장소 사진 목록과 페이지 정보
  */
-public record PlaceImageListResponse(boolean success, Data data) {
+public record PlaceImageListResponse(boolean success, Data data)
+    implements CommonResponse<PlaceImageListResponse.Data> {
 
   /**
    * 장소 사진 목록 결과를 API 응답으로 변환합니다.

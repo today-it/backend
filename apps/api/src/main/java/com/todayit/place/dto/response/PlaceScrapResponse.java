@@ -1,5 +1,6 @@
 package com.todayit.place.dto.response;
 
+import com.todayit.common.response.CommonResponse;
 import com.todayit.place.service.model.PlaceScrapResult;
 
 /**
@@ -8,7 +9,8 @@ import com.todayit.place.service.model.PlaceScrapResult;
  * @param success 요청 성공 여부
  * @param data 장소 스크랩 결과
  */
-public record PlaceScrapResponse(boolean success, Data data) {
+public record PlaceScrapResponse(boolean success, Data data)
+    implements CommonResponse<PlaceScrapResponse.Data> {
 
   /**
    * 장소 스크랩 결과를 API 응답으로 변환합니다.

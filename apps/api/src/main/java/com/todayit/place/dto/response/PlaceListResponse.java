@@ -1,5 +1,6 @@
 package com.todayit.place.dto.response;
 
+import com.todayit.common.response.CommonResponse;
 import com.todayit.place.service.model.PlaceListResult;
 import java.util.List;
 
@@ -9,7 +10,8 @@ import java.util.List;
  * @param success 요청 성공 여부
  * @param data 장소 목록과 페이지 정보
  */
-public record PlaceListResponse(boolean success, Data data) {
+public record PlaceListResponse(boolean success, Data data)
+    implements CommonResponse<PlaceListResponse.Data> {
 
   /**
    * 장소 목록 결과를 API 응답으로 변환합니다.
