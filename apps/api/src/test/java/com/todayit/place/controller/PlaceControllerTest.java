@@ -10,12 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.todayit.common.exception.GlobalExceptionHandler;
+import com.todayit.common.pagination.PageResult;
 import com.todayit.place.entity.Category;
 import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.service.PlaceService;
-import com.todayit.place.service.model.PlaceImageListResult;
 import com.todayit.place.service.model.PlaceImageResult;
-import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapResult;
@@ -69,7 +68,7 @@ class PlaceControllerTest {
             10,
             List.of("https://placehold.co/1200x800?text=Restaurant"));
     when(placeService.findPlaces(1, 5, PlaceSort.POPULAR))
-        .thenReturn(new PlaceListResult(List.of(place), 1, 5, 6, 2));
+        .thenReturn(new PageResult<>(List.of(place), 1, 5, 6));
 
     // When
     mockMvc
@@ -85,8 +84,7 @@ class PlaceControllerTest {
                 .value("https://placehold.co/1200x800?text=Restaurant"))
         .andExpect(jsonPath("$.data.page").value(1))
         .andExpect(jsonPath("$.data.size").value(5))
-        .andExpect(jsonPath("$.data.totalElements").value(6))
-        .andExpect(jsonPath("$.data.totalPages").value(2));
+        .andExpect(jsonPath("$.data.totalElements").value(6));
 
     // Then
     verify(placeService).findPlaces(1, 5, PlaceSort.POPULAR);
@@ -99,7 +97,7 @@ class PlaceControllerTest {
     // Given
     when(placeService.findPlaceImages(1, 0, 5))
         .thenReturn(
-            new PlaceImageListResult(
+            new PageResult<>(
                 List.of(new PlaceImageResult(10, "https://example.com/place-image.jpg")), 0, 5, 1));
 
     // When

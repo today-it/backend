@@ -1,14 +1,13 @@
 package com.todayit.place.service;
 
+import com.todayit.common.pagination.PageResult;
 import com.todayit.place.entity.Place;
 import com.todayit.place.entity.PlaceImage;
 import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
 import com.todayit.place.repository.PlaceScrapRepository;
-import com.todayit.place.service.model.PlaceImageListResult;
 import com.todayit.place.service.model.PlaceImageResult;
-import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapResult;
@@ -55,7 +54,7 @@ public class PlaceService {
    * @return 장소 목록과 페이지 정보
    */
   @Transactional(readOnly = true)
-  public PlaceListResult findPlaces(int page, int size, PlaceSort sort) {
+  public PageResult<PlaceResult> findPlaces(int page, int size, PlaceSort sort) {
     Sort order =
         sort == PlaceSort.LATEST
             ? Sort.by(Sort.Direction.DESC, "createdAt")
@@ -68,12 +67,8 @@ public class PlaceService {
     List<PlaceResult> content =
         places.stream().map(place -> toResult(place, imageUrlsByPlaceId)).toList();
 
-    return PlaceListResult.from(
-        content,
-        placePage.getNumber(),
-        placePage.getSize(),
-        placePage.getTotalElements(),
-        placePage.getTotalPages());
+    return new PageResult<>(
+        content, placePage.getNumber(), placePage.getSize(), placePage.getTotalElements());
   }
 
   /**
@@ -138,7 +133,7 @@ public class PlaceService {
    * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
    */
   @Transactional(readOnly = true)
-  public PlaceImageListResult findPlaceImages(int placeId, int page, int size) {
+  public PageResult<PlaceImageResult> findPlaceImages(int placeId, int page, int size) {
 
     placeRepository
         .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
@@ -152,7 +147,7 @@ public class PlaceService {
                 size,
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("placeImageId"))));
 
-    return new PlaceImageListResult(
+    return new PageResult<>(
         imagePage.getContent().stream()
             .map(image -> new PlaceImageResult(image.getPlaceImageId(), image.getImageUrl()))
             .toList(),

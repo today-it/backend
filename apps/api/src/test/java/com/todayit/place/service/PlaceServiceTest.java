@@ -7,12 +7,12 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.todayit.common.pagination.PageResult;
 import com.todayit.place.entity.Category;
 import com.todayit.place.entity.Place;
 import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
 import com.todayit.place.repository.PlaceScrapRepository;
-import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceSort;
@@ -67,7 +67,7 @@ class PlaceServiceTest {
         new PlaceService(placeRepository, placeImageRepository, placeScrapRepository);
 
     // When
-    PlaceListResult result = placeService.findPlaces(1, 2, PlaceSort.POPULAR);
+    PageResult<PlaceResult> result = placeService.findPlaces(1, 2, PlaceSort.POPULAR);
 
     // Then
     assertThat(result.content())
@@ -84,7 +84,6 @@ class PlaceServiceTest {
     assertThat(result.page()).isEqualTo(1);
     assertThat(result.size()).isEqualTo(2);
     assertThat(result.totalElements()).isEqualTo(3);
-    assertThat(result.totalPages()).isEqualTo(2);
     verify(placeRepository)
         .findByIsActiveTrueAndIsDeletedFalse(
             PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "viewCount")));

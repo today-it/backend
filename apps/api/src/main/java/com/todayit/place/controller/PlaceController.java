@@ -1,9 +1,11 @@
 package com.todayit.place.controller;
 
+import com.todayit.common.pagination.PageResponse;
 import com.todayit.common.pagination.PaginationValidator;
-import com.todayit.place.dto.response.PlaceImageListResponse;
-import com.todayit.place.dto.response.PlaceListResponse;
+import com.todayit.common.response.ApiResponse;
+import com.todayit.place.dto.response.PlaceImageResponse;
 import com.todayit.place.dto.response.PlaceLocationResponse;
+import com.todayit.place.dto.response.PlaceResponse;
 import com.todayit.place.dto.response.PlaceScrapResponse;
 import com.todayit.place.exception.PlaceInvalidRequestException;
 import com.todayit.place.service.PlaceService;
@@ -46,12 +48,14 @@ public class PlaceController {
    * @return 장소 목록과 페이지 정보
    */
   @GetMapping
-  public ResponseEntity<PlaceListResponse> findPlaces(
+  public ResponseEntity<ApiResponse<PageResponse<PlaceResponse>>> findPlaces(
       @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
       @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size,
       @RequestParam(defaultValue = "LATEST") PlaceSort sort) {
     validatePagination(page, size);
-    return ResponseEntity.ok(PlaceListResponse.from(placeService.findPlaces(page, size, sort)));
+    return ResponseEntity.ok(
+        ApiResponse.success(
+            PageResponse.from(placeService.findPlaces(page, size, sort), PlaceResponse::from)));
   }
 
   /**
@@ -61,8 +65,10 @@ public class PlaceController {
    * @return 장소 위치 응답
    */
   @GetMapping("/{placeId}/location")
-  public ResponseEntity<PlaceLocationResponse> findPlaceLocation(@PathVariable int placeId) {
-    return ResponseEntity.ok(PlaceLocationResponse.from(placeService.findPlaceLocation(placeId)));
+  public ResponseEntity<ApiResponse<PlaceLocationResponse>> findPlaceLocation(
+      @PathVariable int placeId) {
+    return ResponseEntity.ok(
+        ApiResponse.success(PlaceLocationResponse.from(placeService.findPlaceLocation(placeId))));
   }
 
   /**
@@ -74,13 +80,15 @@ public class PlaceController {
    * @return 장소 사진 목록과 페이지 정보
    */
   @GetMapping("/{placeId}/images")
-  public ResponseEntity<PlaceImageListResponse> findPlaceImages(
+  public ResponseEntity<ApiResponse<PageResponse<PlaceImageResponse>>> findPlaceImages(
       @PathVariable int placeId,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
       @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size) {
     validatePagination(page, size);
     return ResponseEntity.ok(
-        PlaceImageListResponse.from(placeService.findPlaceImages(placeId, page, size)));
+        ApiResponse.success(
+            PageResponse.from(
+                placeService.findPlaceImages(placeId, page, size), PlaceImageResponse::from)));
   }
 
   /**
@@ -91,10 +99,11 @@ public class PlaceController {
    * @return 장소 스크랩 결과
    */
   @PostMapping("/{placeId}/scrap")
-  public ResponseEntity<PlaceScrapResponse> scrapPlace(
+  public ResponseEntity<ApiResponse<PlaceScrapResponse>> scrapPlace(
       @PathVariable int placeId, Authentication authentication) {
     return ResponseEntity.ok(
-        PlaceScrapResponse.from(placeService.scrapPlace(placeId, authentication.getName())));
+        ApiResponse.success(
+            PlaceScrapResponse.from(placeService.scrapPlace(placeId, authentication.getName()))));
   }
 
   /**
@@ -105,10 +114,12 @@ public class PlaceController {
    * @return 장소 스크랩 결과
    */
   @DeleteMapping("/{placeId}/scrap")
-  public ResponseEntity<PlaceScrapResponse> cancelPlaceScrap(
+  public ResponseEntity<ApiResponse<PlaceScrapResponse>> cancelPlaceScrap(
       @PathVariable int placeId, Authentication authentication) {
     return ResponseEntity.ok(
-        PlaceScrapResponse.from(placeService.cancelPlaceScrap(placeId, authentication.getName())));
+        ApiResponse.success(
+            PlaceScrapResponse.from(
+                placeService.cancelPlaceScrap(placeId, authentication.getName()))));
   }
 
   /**
