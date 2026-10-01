@@ -49,4 +49,31 @@ public class Place {
   private LocalDateTime updatedAt;
 
   protected Place() {}
+
+  /**
+   * 목록 조회에 필요한 장소 정보를 하나의 값으로 반환합니다.
+   *
+   * @return 장소 조회 정보
+   */
+  public PlaceSnapshot getSnapshot() {
+    return new PlaceSnapshot(placeId, name, latitude, longitude, category, viewCount);
+  }
+
+  /**
+   * 장소 목록에 공개할 정보를 담습니다.
+   *
+   * @param placeId 장소 식별자
+   * @param name 장소명
+   * @param latitude 위도
+   * @param longitude 경도
+   * @param category 카테고리
+   * @param viewCount 조회수
+   */
+  public record PlaceSnapshot(
+      int placeId,
+      String name,
+      BigDecimal latitude,
+      BigDecimal longitude,
+      Category category,
+      int viewCount) {}
 }

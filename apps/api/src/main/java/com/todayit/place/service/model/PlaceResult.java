@@ -1,4 +1,40 @@
 package com.todayit.place.service.model;
 
-/** 장소 서비스가 반환할 업무 결과의 골격입니다. */
-public record PlaceResult() {}
+import com.todayit.place.entity.Category;
+import com.todayit.place.entity.Place.PlaceSnapshot;
+import java.math.BigDecimal;
+
+/**
+ * 장소 목록에서 공개할 장소 정보입니다.
+ *
+ * @param placeId 장소 식별자
+ * @param name 장소명
+ * @param latitude 위도
+ * @param longitude 경도
+ * @param category 카테고리
+ * @param viewCount 조회수
+ */
+public record PlaceResult(
+    int placeId,
+    String name,
+    BigDecimal latitude,
+    BigDecimal longitude,
+    Category category,
+    int viewCount) {
+
+  /**
+   * 장소 Entity의 조회 정보를 서비스 결과로 변환합니다.
+   *
+   * @param snapshot 장소 조회 정보
+   * @return 장소 서비스 결과
+   */
+  public static PlaceResult from(PlaceSnapshot snapshot) {
+    return new PlaceResult(
+        snapshot.placeId(),
+        snapshot.name(),
+        snapshot.latitude(),
+        snapshot.longitude(),
+        snapshot.category(),
+        snapshot.viewCount());
+  }
+}
