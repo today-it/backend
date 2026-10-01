@@ -38,3 +38,34 @@ WHERE NOT EXISTS (
     FROM place
     WHERE place.name = seed.name
 );
+
+INSERT INTO place_image (
+    place_id,
+    image_url
+)
+SELECT
+    place.place_id,
+    seed.image_url
+FROM (
+    VALUES
+        ('오늘의 식당', 'https://placehold.co/1200x800?text=Restaurant'),
+        ('종로 카페거리', 'https://placehold.co/1200x800?text=Cafe'),
+        ('달빛 와인바', 'https://placehold.co/1200x800?text=Wine+Bar'),
+        ('서울 전시 공간', 'https://placehold.co/1200x800?text=Exhibition'),
+        ('시네마 종로', 'https://placehold.co/1200x800?text=Cinema'),
+        ('도예 원데이 클래스', 'https://placehold.co/1200x800?text=Workshop'),
+        ('도심 보드게임 라운지', 'https://placehold.co/1200x800?text=Board+Game'),
+        ('북악산 산책로', 'https://placehold.co/1200x800?text=Nature'),
+        ('인사동 소품 상점', 'https://placehold.co/1200x800?text=Shopping'),
+        ('남산 전망대', 'https://placehold.co/1200x800?text=Landmark'),
+        ('도심 스파', 'https://placehold.co/1200x800?text=Spa'),
+        ('운영 중단 장소', 'https://placehold.co/1200x800?text=Inactive'),
+        ('삭제된 장소', 'https://placehold.co/1200x800?text=Deleted')
+) AS seed(place_name, image_url)
+JOIN place ON place.name = seed.place_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM place_image
+    WHERE place_image.place_id = place.place_id
+      AND place_image.image_url = seed.image_url
+);

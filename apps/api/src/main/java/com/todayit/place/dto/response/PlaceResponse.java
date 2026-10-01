@@ -3,6 +3,7 @@ package com.todayit.place.dto.response;
 import com.todayit.place.entity.Category;
 import com.todayit.place.service.model.PlaceResult;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 장소 목록에서 반환할 장소 응답입니다.
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
  * @param address 주소
  * @param category 카테고리
  * @param viewCount 조회수
+ * @param imageUrls 장소 이미지 URL 목록
  */
 public record PlaceResponse(
     int placeId,
@@ -22,7 +24,8 @@ public record PlaceResponse(
     BigDecimal longitude,
     String address,
     Category category,
-    int viewCount) {
+    int viewCount,
+    List<String> imageUrls) {
 
   /**
    * 장소 조회 결과를 API 응답으로 변환합니다.
@@ -38,6 +41,7 @@ public record PlaceResponse(
         result.longitude(),
         result.address(),
         result.category(),
-        result.viewCount());
+        result.viewCount(),
+        result.imageUrls());
   }
 }

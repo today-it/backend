@@ -3,6 +3,7 @@ package com.todayit.place.service.model;
 import com.todayit.place.entity.Category;
 import com.todayit.place.entity.Place.PlaceSnapshot;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 장소 목록에서 공개할 장소 정보입니다.
@@ -14,6 +15,7 @@ import java.math.BigDecimal;
  * @param address 주소
  * @param category 카테고리
  * @param viewCount 조회수
+ * @param imageUrls 장소 이미지 URL 목록
  */
 public record PlaceResult(
     int placeId,
@@ -22,7 +24,8 @@ public record PlaceResult(
     BigDecimal longitude,
     String address,
     Category category,
-    int viewCount) {
+    int viewCount,
+    List<String> imageUrls) {
 
   /**
    * 장소 Entity의 조회 정보를 서비스 결과로 변환합니다.
@@ -38,6 +41,7 @@ public record PlaceResult(
         snapshot.longitude(),
         snapshot.address(),
         snapshot.category(),
-        snapshot.viewCount());
+        snapshot.viewCount(),
+        snapshot.imageUrls());
   }
 }

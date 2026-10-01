@@ -1,5 +1,6 @@
 package com.todayit.place.entity;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,9 +8,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /** 장소의 기본 정보와 운영 상태를 나타냅니다. */
 @Entity
@@ -51,7 +55,19 @@ public class Place {
   @Column(name = "updated_at", nullable = true)
   private LocalDateTime updatedAt;
 
+  @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<PlaceImage> images = new ArrayList<>();
+
   protected Place() {}
+
+  /**
+   * 장소에 등록된 이미지를 반환합니다.
+   *
+   * @return 장소 이미지 목록
+   */
+  public List<PlaceImage> getImages() {
+    return List.copyOf(images);
+  }
 
   /**
    * 목록 조회에 필요한 장소 정보를 하나의 값으로 반환합니다.
@@ -59,7 +75,15 @@ public class Place {
    * @return 장소 조회 정보
    */
   public PlaceSnapshot getSnapshot() {
-    return new PlaceSnapshot(placeId, name, latitude, longitude, address, category, viewCount);
+    return new PlaceSnapshot(
+        placeId,
+        name,
+        latitude,
+        longitude,
+        address,
+        category,
+        viewCount,
+        images.stream().map(PlaceImage::getImageUrl).toList());
   }
 
   /**
@@ -72,6 +96,7 @@ public class Place {
    * @param address 주소
    * @param category 카테고리
    * @param viewCount 조회수
+   * @param imageUrls 장소 이미지 URL 목록
    */
   public record PlaceSnapshot(
       int placeId,
@@ -80,5 +105,6 @@ public class Place {
       BigDecimal longitude,
       String address,
       Category category,
-      int viewCount) {}
+      int viewCount,
+      List<String> imageUrls) {}
 }

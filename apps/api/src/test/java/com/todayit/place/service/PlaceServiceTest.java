@@ -46,7 +46,8 @@ class PlaceServiceTest {
             new BigDecimal("127.0"),
             "서울특별시 종로구 종로 1",
             Category.RESTAURANT,
-            15);
+            15,
+            List.of("https://placehold.co/1200x800?text=Restaurant"));
     when(place.getSnapshot()).thenReturn(snapshot);
     when(placeRepository.findByIsActiveTrueAndIsDeletedFalse(
             argThat(
@@ -69,7 +70,8 @@ class PlaceServiceTest {
                 new BigDecimal("127.0"),
                 "서울특별시 종로구 종로 1",
                 Category.RESTAURANT,
-                15));
+                15,
+                List.of("https://placehold.co/1200x800?text=Restaurant")));
     assertThat(result.page()).isEqualTo(1);
     assertThat(result.size()).isEqualTo(2);
     assertThat(result.totalElements()).isEqualTo(3);
@@ -93,7 +95,8 @@ class PlaceServiceTest {
                 new BigDecimal("126.98500000"),
                 "서울특별시 종로구 종로 1",
                 Category.RESTAURANT,
-                15));
+                15,
+                List.of("https://placehold.co/1200x800?text=Restaurant")));
     when(placeRepository.findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(1))
         .thenReturn(Optional.of(place));
     PlaceService placeService = new PlaceService(placeRepository);

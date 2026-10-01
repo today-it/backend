@@ -60,7 +60,8 @@ class PlaceControllerTest {
             new BigDecimal("127.0"),
             "서울특별시 종로구 종로 1",
             Category.RESTAURANT,
-            10);
+            10,
+            List.of("https://placehold.co/1200x800?text=Restaurant"));
     when(placeService.findPlaces(1, 5, PlaceSort.POPULAR))
         .thenReturn(new PlaceListResult(List.of(place), 1, 5, 6, 2));
 
@@ -73,6 +74,9 @@ class PlaceControllerTest {
         .andExpect(jsonPath("$.data.content[0].placeId").value(1))
         .andExpect(jsonPath("$.data.content[0].name").value("오늘의 식당"))
         .andExpect(jsonPath("$.data.content[0].address").value("서울특별시 종로구 종로 1"))
+        .andExpect(
+            jsonPath("$.data.content[0].imageUrls[0]")
+                .value("https://placehold.co/1200x800?text=Restaurant"))
         .andExpect(jsonPath("$.data.page").value(1))
         .andExpect(jsonPath("$.data.size").value(5))
         .andExpect(jsonPath("$.data.totalElements").value(6))
