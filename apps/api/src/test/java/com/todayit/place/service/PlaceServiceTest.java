@@ -10,6 +10,7 @@ import com.todayit.place.entity.Category;
 import com.todayit.place.entity.Place;
 import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
+import com.todayit.place.repository.PlaceScrapRepository;
 import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
@@ -33,6 +34,8 @@ class PlaceServiceTest {
   @Mock private PlaceRepository placeRepository;
 
   @Mock private PlaceImageRepository placeImageRepository;
+
+  @Mock private PlaceScrapRepository placeScrapRepository;
 
   @Mock private Place place;
 
@@ -58,7 +61,8 @@ class PlaceServiceTest {
                     pageable.equals(
                         PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "viewCount"))))))
         .thenReturn(new PageImpl<>(List.of(place), PageRequest.of(1, 2), 3));
-    PlaceService placeService = new PlaceService(placeRepository, placeImageRepository);
+    PlaceService placeService =
+        new PlaceService(placeRepository, placeImageRepository, placeScrapRepository);
 
     // When
     PlaceListResult result = placeService.findPlaces(1, 2, PlaceSort.POPULAR);
@@ -102,7 +106,8 @@ class PlaceServiceTest {
                 List.of("https://placehold.co/1200x800?text=Restaurant")));
     when(placeRepository.findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(1))
         .thenReturn(Optional.of(place));
-    PlaceService placeService = new PlaceService(placeRepository, placeImageRepository);
+    PlaceService placeService =
+        new PlaceService(placeRepository, placeImageRepository, placeScrapRepository);
 
     // When
     PlaceLocationResult result = placeService.findPlaceLocation(1);
@@ -124,7 +129,8 @@ class PlaceServiceTest {
     // Given
     when(placeRepository.findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(999))
         .thenReturn(Optional.empty());
-    PlaceService placeService = new PlaceService(placeRepository, placeImageRepository);
+    PlaceService placeService =
+        new PlaceService(placeRepository, placeImageRepository, placeScrapRepository);
 
     // When
     var exception = assertThatThrownBy(() -> placeService.findPlaceLocation(999));

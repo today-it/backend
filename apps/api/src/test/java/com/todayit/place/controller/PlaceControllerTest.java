@@ -4,6 +4,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,7 @@ import com.todayit.place.service.model.PlaceImageResult;
 import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
+import com.todayit.place.service.model.PlaceScrapResult;
 import com.todayit.place.service.model.PlaceSort;
 import java.math.BigDecimal;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -112,6 +115,28 @@ class PlaceControllerTest {
 
     // Then
     verify(placeService).findPlaceImages(1, 0, 5);
+  }
+
+  /** 인증된 회원의 장소 스크랩 결과를 반환하는지 검증합니다. */
+  @Test
+  @DisplayName("장소를 스크랩하고 스크랩 수를 반환한다")
+  void scrapsPlace() throws Exception {
+    // Given
+    when(placeService.scrapPlace(1, "member-1")).thenReturn(new PlaceScrapResult(1, true, 3));
+
+    // When
+    mockMvc
+        .perform(
+            post("/api/v1/places/1/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.placeId").value(1))
+        .andExpect(jsonPath("$.data.scrapped").value(true))
+        .andExpect(jsonPath("$.data.scrapCount").value(3));
+
+    // Then
+    verify(placeService).scrapPlace(1, "member-1");
   }
 
   /**

@@ -64,11 +64,12 @@ CREATE TABLE place_scrap (
     is_deleted BOOLEAN NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE,
-    deleted_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT fk_place_scrap_member
         FOREIGN KEY (member_id) REFERENCES member (member_id),
     CONSTRAINT fk_place_scrap_place
-        FOREIGN KEY (place_id) REFERENCES place (place_id)
+        FOREIGN KEY (place_id) REFERENCES place (place_id),
+    CONSTRAINT uk_place_scrap_member_place UNIQUE (member_id, place_id)
 );
 
 CREATE TABLE hours (

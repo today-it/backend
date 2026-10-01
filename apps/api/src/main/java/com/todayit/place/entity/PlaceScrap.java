@@ -9,11 +9,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 
 /** 회원이 스크랩한 장소 정보를 나타냅니다. */
 @Entity
-@Table(name = "place_scrap")
+@Table(
+    name = "place_scrap",
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uk_place_scrap_member_place",
+            columnNames = {"member_id", "place_id"}))
 public class PlaceScrap {
 
   @Id
@@ -37,62 +43,32 @@ public class PlaceScrap {
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
-  @Column(name = "deleted_at", nullable = false)
+  @Column(name = "deleted_at")
   private LocalDateTime deletedAt;
 
   protected PlaceScrap() {}
 
   /**
-   * 스크랩 식별자를 반환합니다.
+   * 회원의 장소 스크랩을 생성합니다.
    *
-   * @return 스크랩 식별자
+   * @param memberId 회원 식별자
+   * @param place 스크랩할 장소
    */
-  public int getPlaceScrapId() {
-    return placeScrapId;
+  private PlaceScrap(String memberId, Place place) {
+    this.memberId = memberId;
+    this.place = place;
+    this.isDeleted = false;
+    this.createdAt = LocalDateTime.now();
   }
 
   /**
-   * 회원 식별자를 반환합니다.
+   * 회원의 장소 스크랩을 생성합니다.
    *
-   * @return 회원 식별자
+   * @param memberId 회원 식별자
+   * @param place 스크랩할 장소
+   * @return 장소 스크랩
    */
-  public String getMemberId() {
-    return memberId;
-  }
-
-  /**
-   * 삭제 여부를 반환합니다.
-   *
-   * @return 삭제 여부
-   */
-  public boolean isDeleted() {
-    return isDeleted;
-  }
-
-  /**
-   * 생성 시각을 반환합니다.
-   *
-   * @return 생성 시각
-   */
-  public LocalDateTime getCreatedAt() {
-    return createdAt;
-  }
-
-  /**
-   * 수정 시각을 반환합니다.
-   *
-   * @return 수정 시각
-   */
-  public LocalDateTime getUpdatedAt() {
-    return updatedAt;
-  }
-
-  /**
-   * 삭제 시각을 반환합니다.
-   *
-   * @return 삭제 시각
-   */
-  public LocalDateTime getDeletedAt() {
-    return deletedAt;
+  public static PlaceScrap create(String memberId, Place place) {
+    return new PlaceScrap(memberId, place);
   }
 }

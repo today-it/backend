@@ -3,12 +3,15 @@ package com.todayit.place.controller;
 import com.todayit.place.dto.response.PlaceImageListResponse;
 import com.todayit.place.dto.response.PlaceListResponse;
 import com.todayit.place.dto.response.PlaceLocationResponse;
+import com.todayit.place.dto.response.PlaceScrapResponse;
 import com.todayit.place.exception.PlaceInvalidRequestException;
 import com.todayit.place.service.PlaceService;
 import com.todayit.place.service.model.PlaceSort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -76,6 +79,20 @@ public class PlaceController {
     validatePagination(page, size);
     return ResponseEntity.ok(
         PlaceImageListResponse.from(placeService.findPlaceImages(placeId, page, size)));
+  }
+
+  /**
+   * 인증된 회원의 장소 스크랩을 생성합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param authentication 인증된 회원 정보
+   * @return 장소 스크랩 결과
+   */
+  @PostMapping("/{placeId}/scrap")
+  public ResponseEntity<PlaceScrapResponse> scrapPlace(
+      @PathVariable int placeId, Authentication authentication) {
+    return ResponseEntity.ok(
+        PlaceScrapResponse.from(placeService.scrapPlace(placeId, authentication.getName())));
   }
 
   /**

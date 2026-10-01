@@ -2,14 +2,17 @@ package com.todayit.place.service;
 
 import com.todayit.place.entity.Place;
 import com.todayit.place.entity.PlaceImage;
+import com.todayit.place.entity.PlaceScrap;
 import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
+import com.todayit.place.repository.PlaceScrapRepository;
 import com.todayit.place.service.model.PlaceImageListResult;
 import com.todayit.place.service.model.PlaceImageResult;
 import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
+import com.todayit.place.service.model.PlaceScrapResult;
 import com.todayit.place.service.model.PlaceSort;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -24,16 +27,22 @@ public class PlaceService {
 
   private final PlaceRepository placeRepository;
   private final PlaceImageRepository placeImageRepository;
+  private final PlaceScrapRepository placeScrapRepository;
 
   /**
    * 장소 정보를 조회하고 저장할 Repository를 받습니다.
    *
    * @param placeRepository 장소 Repository
    * @param placeImageRepository 장소 이미지 Repository
+   * @param placeScrapRepository 장소 스크랩 Repository
    */
-  public PlaceService(PlaceRepository placeRepository, PlaceImageRepository placeImageRepository) {
+  public PlaceService(
+      PlaceRepository placeRepository,
+      PlaceImageRepository placeImageRepository,
+      PlaceScrapRepository placeScrapRepository) {
     this.placeRepository = placeRepository;
     this.placeImageRepository = placeImageRepository;
+    this.placeScrapRepository = placeScrapRepository;
   }
 
   /**
@@ -109,6 +118,28 @@ public class PlaceService {
         imagePage.getNumber(),
         imagePage.getSize(),
         imagePage.getTotalElements());
+  }
+
+  /**
+   * 회원의 장소 스크랩을 생성하고 장소의 활성 스크랩 수를 반환합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param memberId 회원 식별자
+   * @return 장소 스크랩 결과
+   * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
+   */
+  @Transactional
+  public PlaceScrapResult scrapPlace(int placeId, String memberId) {
+    Place place =
+        placeRepository
+            .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
+            .orElseThrow(PlaceNotFoundException::new);
+
+    if (placeScrapRepository.findByMemberIdAndPlacePlaceId(memberId, placeId).isEmpty()) {
+      placeScrapRepository.save(PlaceScrap.create(memberId, place));
+    }
+
+    return new PlaceScrapResult(placeId, true, placeScrapRepository.countActiveByPlaceId(placeId));
   }
 
   /**
