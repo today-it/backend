@@ -15,5 +15,5 @@ public interface PlaceImageRepository extends JpaRepository<PlaceImage, Integer>
    * @param pageable 페이지와 정렬 조건
    * @return 장소 이미지 페이지
    */
-  Page<PlaceImage> findByPlace_PlaceId(int placeId, Pageable pageable);
+  Page<PlaceImage> findByPlacePlaceId(int placeId, Pageable pageable);
 }

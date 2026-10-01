@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /** 장소 관련 업무를 처리하는 Service입니다. */
 @Service
@@ -28,6 +29,7 @@ public class PlaceService {
    * 장소 정보를 조회하고 저장할 Repository를 받습니다.
    *
    * @param placeRepository 장소 Repository
+   * @param placeImageRepository 장소 이미지 Repository
    */
   public PlaceService(PlaceRepository placeRepository, PlaceImageRepository placeImageRepository) {
     this.placeRepository = placeRepository;
@@ -42,12 +44,12 @@ public class PlaceService {
    * @param sort 정렬 기준
    * @return 장소 목록과 페이지 정보
    */
+  @Transactional(readOnly = true)
   public PlaceListResult findPlaces(int page, int size, PlaceSort sort) {
     Sort order =
-        switch (sort) {
-          case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
-          case POPULAR -> Sort.by(Sort.Direction.DESC, "viewCount");
-        };
+        sort == PlaceSort.LATEST
+            ? Sort.by(Sort.Direction.DESC, "createdAt")
+            : Sort.by(Sort.Direction.DESC, "viewCount");
 
     Page<Place> placePage =
         placeRepository.findByIsActiveTrueAndIsDeletedFalse(PageRequest.of(page, size, order));
@@ -68,6 +70,7 @@ public class PlaceService {
    * @return 장소 식별자, 좌표와 주소
    * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
    */
+  @Transactional(readOnly = true)
   public PlaceLocationResult findPlaceLocation(int placeId) {
 
     Place place =
@@ -89,6 +92,7 @@ public class PlaceService {
    * @return 장소 사진 목록과 페이지 정보
    * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
    */
+  @Transactional(readOnly = true)
   public PlaceImageListResult findPlaceImages(int placeId, int page, int size) {
 
     placeRepository
@@ -96,7 +100,7 @@ public class PlaceService {
         .orElseThrow(PlaceNotFoundException::new);
 
     Page<PlaceImage> imagePage =
-        placeImageRepository.findByPlace_PlaceId(placeId, PageRequest.of(page, size));
+        placeImageRepository.findByPlacePlaceId(placeId, PageRequest.of(page, size));
 
     return new PlaceImageListResult(
         imagePage.getContent().stream()

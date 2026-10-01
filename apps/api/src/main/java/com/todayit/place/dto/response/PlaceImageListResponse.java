@@ -4,7 +4,12 @@ import com.todayit.place.service.model.PlaceImageListResult;
 import com.todayit.place.service.model.PlaceImageResult;
 import java.util.List;
 
-/** 장소 사진 목록 조회 API의 응답입니다. */
+/**
+ * 장소 사진 목록 조회 API의 응답입니다.
+ *
+ * @param success 요청 성공 여부
+ * @param data 장소 사진 목록과 페이지 정보
+ */
 public record PlaceImageListResponse(boolean success, Data data) {
 
   /**
@@ -33,7 +38,12 @@ public record PlaceImageListResponse(boolean success, Data data) {
    */
   public record Data(List<PlaceImageResponse> content, int page, int size, long totalElements) {}
 
-  /** 장소 사진 응답입니다. */
+  /**
+   * 장소 사진 응답입니다.
+   *
+   * @param placeImageId 장소 사진 식별자
+   * @param imageUrl 장소 사진 URL
+   */
   public record PlaceImageResponse(int placeImageId, String imageUrl) {
 
     /**

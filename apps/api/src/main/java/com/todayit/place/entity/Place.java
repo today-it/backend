@@ -58,6 +58,15 @@ public class Place {
   @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<PlaceImage> images = new ArrayList<>();
 
+  @OneToMany(mappedBy = "place")
+  private List<PlaceScrap> scraps = new ArrayList<>();
+
+  @OneToMany(mappedBy = "place")
+  private List<Hours> hours = new ArrayList<>();
+
+  @OneToMany(mappedBy = "place")
+  private List<PlaceMemberLike> memberLikes = new ArrayList<>();
+
   protected Place() {}
 
   /**
