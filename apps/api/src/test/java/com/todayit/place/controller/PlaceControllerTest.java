@@ -11,6 +11,8 @@ import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.place.entity.Category;
 import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.service.PlaceService;
+import com.todayit.place.service.model.PlaceImageListResult;
+import com.todayit.place.service.model.PlaceImageResult;
 import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
@@ -84,6 +86,32 @@ class PlaceControllerTest {
 
     // Then
     verify(placeService).findPlaces(1, 5, PlaceSort.POPULAR);
+  }
+
+  /** 장소 사진 목록과 페이지 정보를 성공 응답으로 반환하는지 검증합니다. */
+  @Test
+  @DisplayName("장소 사진 목록을 페이지 정보와 함께 반환한다")
+  void returnsPagedPlaceImages() throws Exception {
+    // Given
+    when(placeService.findPlaceImages(1, 0, 5))
+        .thenReturn(
+            new PlaceImageListResult(
+                List.of(new PlaceImageResult(10, "https://example.com/place-image.jpg")), 0, 5, 1));
+
+    // When
+    mockMvc
+        .perform(get("/api/v1/places/1/images").param("page", "0").param("size", "5"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.content[0].placeImageId").value(10))
+        .andExpect(
+            jsonPath("$.data.content[0].imageUrl").value("https://example.com/place-image.jpg"))
+        .andExpect(jsonPath("$.data.page").value(0))
+        .andExpect(jsonPath("$.data.size").value(5))
+        .andExpect(jsonPath("$.data.totalElements").value(1));
+
+    // Then
+    verify(placeService).findPlaceImages(1, 0, 5);
   }
 
   /**

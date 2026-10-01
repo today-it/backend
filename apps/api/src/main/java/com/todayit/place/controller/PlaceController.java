@@ -1,5 +1,6 @@
 package com.todayit.place.controller;
 
+import com.todayit.place.dto.response.PlaceImageListResponse;
 import com.todayit.place.dto.response.PlaceListResponse;
 import com.todayit.place.dto.response.PlaceLocationResponse;
 import com.todayit.place.exception.PlaceInvalidRequestException;
@@ -57,6 +58,24 @@ public class PlaceController {
   @GetMapping("/{placeId}/location")
   public ResponseEntity<PlaceLocationResponse> findPlaceLocation(@PathVariable int placeId) {
     return ResponseEntity.ok(PlaceLocationResponse.from(placeService.findPlaceLocation(placeId)));
+  }
+
+  /**
+   * 장소의 사진 목록을 조회합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param page 페이지 번호
+   * @param size 페이지 크기
+   * @return 장소 사진 목록과 페이지 정보
+   */
+  @GetMapping("/{placeId}/images")
+  public ResponseEntity<PlaceImageListResponse> findPlaceImages(
+      @PathVariable int placeId,
+      @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
+      @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size) {
+    validatePagination(page, size);
+    return ResponseEntity.ok(
+        PlaceImageListResponse.from(placeService.findPlaceImages(placeId, page, size)));
   }
 
   /**

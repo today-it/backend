@@ -109,6 +109,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/places/*/location")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/places/*/images")
+                    .permitAll()
 
                     // 위에를 제외한 모든 요청은 인증된 사용자만 접근 가능하도록 설정
                     .anyRequest()

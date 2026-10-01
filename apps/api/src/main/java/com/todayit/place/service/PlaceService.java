@@ -1,8 +1,12 @@
 package com.todayit.place.service;
 
 import com.todayit.place.entity.Place;
+import com.todayit.place.entity.PlaceImage;
 import com.todayit.place.exception.PlaceNotFoundException;
+import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
+import com.todayit.place.service.model.PlaceImageListResult;
+import com.todayit.place.service.model.PlaceImageResult;
 import com.todayit.place.service.model.PlaceListResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
@@ -18,14 +22,16 @@ import org.springframework.stereotype.Service;
 public class PlaceService {
 
   private final PlaceRepository placeRepository;
+  private final PlaceImageRepository placeImageRepository;
 
   /**
    * 장소 정보를 조회하고 저장할 Repository를 받습니다.
    *
    * @param placeRepository 장소 Repository
    */
-  public PlaceService(PlaceRepository placeRepository) {
+  public PlaceService(PlaceRepository placeRepository, PlaceImageRepository placeImageRepository) {
     this.placeRepository = placeRepository;
+    this.placeImageRepository = placeImageRepository;
   }
 
   /**
@@ -63,6 +69,7 @@ public class PlaceService {
    * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
    */
   public PlaceLocationResult findPlaceLocation(int placeId) {
+
     Place place =
         placeRepository
             .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
@@ -71,6 +78,33 @@ public class PlaceService {
 
     return new PlaceLocationResult(
         snapshot.placeId(), snapshot.latitude(), snapshot.longitude(), snapshot.address());
+  }
+
+  /**
+   * 활성화되고 삭제되지 않은 장소의 사진을 페이지 단위로 조회합니다.
+   *
+   * @param placeId 장소 식별자
+   * @param page 페이지 번호
+   * @param size 페이지 크기
+   * @return 장소 사진 목록과 페이지 정보
+   * @throws PlaceNotFoundException 장소가 없거나 비활성·삭제 상태일 때
+   */
+  public PlaceImageListResult findPlaceImages(int placeId, int page, int size) {
+
+    placeRepository
+        .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
+        .orElseThrow(PlaceNotFoundException::new);
+
+    Page<PlaceImage> imagePage =
+        placeImageRepository.findByPlace_PlaceId(placeId, PageRequest.of(page, size));
+
+    return new PlaceImageListResult(
+        imagePage.getContent().stream()
+            .map(image -> new PlaceImageResult(image.getPlaceImageId(), image.getImageUrl()))
+            .toList(),
+        imagePage.getNumber(),
+        imagePage.getSize(),
+        imagePage.getTotalElements());
   }
 
   /**
