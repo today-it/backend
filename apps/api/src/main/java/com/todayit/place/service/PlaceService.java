@@ -68,7 +68,7 @@ public class PlaceService {
     List<PlaceResult> content =
         places.stream().map(place -> toResult(place, imageUrlsByPlaceId)).toList();
 
-    return new PlaceListResult(
+    return PlaceListResult.from(
         content,
         placePage.getNumber(),
         placePage.getSize(),
