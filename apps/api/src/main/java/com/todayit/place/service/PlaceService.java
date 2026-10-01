@@ -2,7 +2,6 @@ package com.todayit.place.service;
 
 import com.todayit.place.entity.Place;
 import com.todayit.place.entity.PlaceImage;
-import com.todayit.place.entity.PlaceScrap;
 import com.todayit.place.exception.PlaceNotFoundException;
 import com.todayit.place.repository.PlaceImageRepository;
 import com.todayit.place.repository.PlaceRepository;
@@ -173,16 +172,11 @@ public class PlaceService {
    */
   @Transactional
   public PlaceScrapResult scrapPlace(int placeId, String memberId) {
-    Place place =
-        placeRepository
-            .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
-            .orElseThrow(PlaceNotFoundException::new);
+    placeRepository
+        .findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId)
+        .orElseThrow(PlaceNotFoundException::new);
 
-    int reactivatedCount = placeScrapRepository.reactivateByMemberIdAndPlaceId(memberId, placeId);
-    if (reactivatedCount == 0
-        && placeScrapRepository.findByMemberIdAndPlacePlaceId(memberId, placeId).isEmpty()) {
-      placeScrapRepository.save(PlaceScrap.create(memberId, place));
-    }
+    placeScrapRepository.upsertByMemberIdAndPlaceId(memberId, placeId);
 
     return new PlaceScrapResult(placeId, true, placeScrapRepository.countActiveByPlaceId(placeId));
   }
