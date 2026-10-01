@@ -3,6 +3,7 @@ CREATE TABLE place (
     name VARCHAR(50) NOT NULL,
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
+    address VARCHAR(255) NOT NULL,
     category VARCHAR(30) NOT NULL,
     view_count INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL,
@@ -31,6 +32,7 @@ COMMENT ON COLUMN place.place_id IS '장소 식별자';
 COMMENT ON COLUMN place.name IS '장소명';
 COMMENT ON COLUMN place.latitude IS '위도';
 COMMENT ON COLUMN place.longitude IS '경도';
+COMMENT ON COLUMN place.address IS '주소';
 COMMENT ON COLUMN place.category IS '카테고리';
 COMMENT ON COLUMN place.view_count IS '조회수';
 COMMENT ON COLUMN place.is_active IS '활성화 여부';

@@ -52,7 +52,13 @@ class PlaceControllerTest {
     // Given
     PlaceResult place =
         new PlaceResult(
-            1, "오늘의 식당", new BigDecimal("37.5"), new BigDecimal("127.0"), Category.RESTAURANT, 10);
+            1,
+            "오늘의 식당",
+            new BigDecimal("37.5"),
+            new BigDecimal("127.0"),
+            "서울특별시 종로구 종로 1",
+            Category.RESTAURANT,
+            10);
     when(placeService.findPlaces(1, 5, PlaceSort.POPULAR))
         .thenReturn(new PlaceListResult(List.of(place), 1, 5, 6, 2));
 
@@ -64,6 +70,7 @@ class PlaceControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.content[0].placeId").value(1))
         .andExpect(jsonPath("$.data.content[0].name").value("오늘의 식당"))
+        .andExpect(jsonPath("$.data.content[0].address").value("서울특별시 종로구 종로 1"))
         .andExpect(jsonPath("$.data.page").value(1))
         .andExpect(jsonPath("$.data.size").value(5))
         .andExpect(jsonPath("$.data.totalElements").value(6))

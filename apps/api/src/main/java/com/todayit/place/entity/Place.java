@@ -30,6 +30,9 @@ public class Place {
   @Column(name = "longitude", nullable = false, precision = 11, scale = 8)
   private BigDecimal longitude;
 
+  @Column(name = "address", nullable = false, length = 255)
+  private String address;
+
   @Enumerated(EnumType.STRING)
   private Category category;
 
@@ -56,7 +59,7 @@ public class Place {
    * @return 장소 조회 정보
    */
   public PlaceSnapshot getSnapshot() {
-    return new PlaceSnapshot(placeId, name, latitude, longitude, category, viewCount);
+    return new PlaceSnapshot(placeId, name, latitude, longitude, address, category, viewCount);
   }
 
   /**
@@ -66,6 +69,7 @@ public class Place {
    * @param name 장소명
    * @param latitude 위도
    * @param longitude 경도
+   * @param address 주소
    * @param category 카테고리
    * @param viewCount 조회수
    */
@@ -74,6 +78,7 @@ public class Place {
       String name,
       BigDecimal latitude,
       BigDecimal longitude,
+      String address,
       Category category,
       int viewCount) {}
 }

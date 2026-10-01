@@ -11,6 +11,7 @@ import java.math.BigDecimal;
  * @param name 장소명
  * @param latitude 위도
  * @param longitude 경도
+ * @param address 주소
  * @param category 카테고리
  * @param viewCount 조회수
  */
@@ -19,6 +20,7 @@ public record PlaceResponse(
     String name,
     BigDecimal latitude,
     BigDecimal longitude,
+    String address,
     Category category,
     int viewCount) {
 
@@ -34,6 +36,7 @@ public record PlaceResponse(
         result.name(),
         result.latitude(),
         result.longitude(),
+        result.address(),
         result.category(),
         result.viewCount());
   }

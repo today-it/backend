@@ -37,7 +37,13 @@ class PlaceServiceTest {
     // Given
     Place.PlaceSnapshot snapshot =
         new Place.PlaceSnapshot(
-            1, "오늘의 식당", new BigDecimal("37.5"), new BigDecimal("127.0"), Category.RESTAURANT, 15);
+            1,
+            "오늘의 식당",
+            new BigDecimal("37.5"),
+            new BigDecimal("127.0"),
+            "서울특별시 종로구 종로 1",
+            Category.RESTAURANT,
+            15);
     when(place.getSnapshot()).thenReturn(snapshot);
     when(placeRepository.findByIsActiveTrueAndIsDeletedFalse(
             argThat(
@@ -58,6 +64,7 @@ class PlaceServiceTest {
                 "오늘의 식당",
                 new BigDecimal("37.5"),
                 new BigDecimal("127.0"),
+                "서울특별시 종로구 종로 1",
                 Category.RESTAURANT,
                 15));
     assertThat(result.page()).isEqualTo(1);
