@@ -46,6 +46,15 @@ public class PlaceImage {
   }
 
   /**
+   * 이미지가 등록된 장소 식별자를 반환합니다.
+   *
+   * @return 장소 식별자
+   */
+  public int getPlaceId() {
+    return place.getPlaceId();
+  }
+
+  /**
    * 장소 이미지 URL을 반환합니다.
    *
    * @return 장소 이미지 URL

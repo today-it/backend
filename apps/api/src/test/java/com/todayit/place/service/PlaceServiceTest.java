@@ -2,6 +2,7 @@ package com.todayit.place.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,6 +45,7 @@ class PlaceServiceTest {
   @DisplayName("장소 목록을 인기순으로 조회하고 페이지 정보와 함께 반환한다")
   void findsPlacesByPopularity() {
     // Given
+    when(place.getPlaceId()).thenReturn(1);
     Place.PlaceSnapshot snapshot =
         new Place.PlaceSnapshot(
             1,
@@ -54,7 +56,7 @@ class PlaceServiceTest {
             Category.RESTAURANT,
             15,
             List.of("https://placehold.co/1200x800?text=Restaurant"));
-    when(place.getSnapshot()).thenReturn(snapshot);
+    when(place.getSnapshot(anyList())).thenReturn(snapshot);
     when(placeRepository.findByIsActiveTrueAndIsDeletedFalse(
             argThat(
                 pageable ->
@@ -86,6 +88,7 @@ class PlaceServiceTest {
     verify(placeRepository)
         .findByIsActiveTrueAndIsDeletedFalse(
             PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "viewCount")));
+    verify(placeImageRepository).findByPlacePlaceIdInOrderByPlacePlaceIdAscCreatedAtAsc(List.of(1));
   }
 
   /** 장소 Entity에서 지도 조회에 필요한 위치 정보를 반환하는지 검증합니다. */

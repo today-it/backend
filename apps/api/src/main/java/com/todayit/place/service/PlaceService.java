@@ -15,6 +15,8 @@ import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapResult;
 import com.todayit.place.service.model.PlaceSort;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -46,7 +48,7 @@ public class PlaceService {
   }
 
   /**
-   * 활성화되고 삭제되지 않은 장소를 페이지 단위로 조회합니다.
+   * 활성화되고 삭제되지 않은 장소를 페이지 단위로 조회합니다. 장소 이미지도 페이지 내 장소를 기준으로 일괄 조회하여 결과에 포함합니다.
    *
    * @param page 페이지 번호
    * @param size 페이지 크기
@@ -62,7 +64,10 @@ public class PlaceService {
 
     Page<Place> placePage =
         placeRepository.findByIsActiveTrueAndIsDeletedFalse(PageRequest.of(page, size, order));
-    List<PlaceResult> content = placePage.map(this::toResult).getContent();
+    List<Place> places = placePage.getContent();
+    Map<Integer, List<String>> imageUrlsByPlaceId = findImageUrlsByPlaceId(places);
+    List<PlaceResult> content =
+        places.stream().map(place -> toResult(place, imageUrlsByPlaceId)).toList();
 
     return new PlaceListResult(
         content,
@@ -70,6 +75,39 @@ public class PlaceService {
         placePage.getSize(),
         placePage.getTotalElements(),
         placePage.getTotalPages());
+  }
+
+  /**
+   * 여러 장소의 이미지 URL을 장소 식별자별로 그룹화합니다. 빈 장소 목록이면 이미지 Repository를 호출하지 않습니다.
+   *
+   * @param places 이미지 URL을 조회할 장소 목록
+   * @return 장소 식별자별 이미지 URL 목록
+   */
+  private Map<Integer, List<String>> findImageUrlsByPlaceId(List<Place> places) {
+    if (places.isEmpty()) {
+      return Map.of();
+    }
+
+    return placeImageRepository
+        .findByPlacePlaceIdInOrderByPlacePlaceIdAscCreatedAtAsc(
+            places.stream().map(Place::getPlaceId).toList())
+        .stream()
+        .collect(
+            Collectors.groupingBy(
+                PlaceImage::getPlaceId,
+                Collectors.mapping(PlaceImage::getImageUrl, Collectors.toList())));
+  }
+
+  /**
+   * 배치 조회한 이미지 URL을 포함해 장소 Entity를 서비스 결과로 변환합니다.
+   *
+   * @param place 변환할 장소
+   * @param imageUrlsByPlaceId 장소 식별자별 이미지 URL 목록
+   * @return 장소 서비스 결과
+   */
+  private PlaceResult toResult(Place place, Map<Integer, List<String>> imageUrlsByPlaceId) {
+    return PlaceResult.from(
+        place.getSnapshot(imageUrlsByPlaceId.getOrDefault(place.getPlaceId(), List.of())));
   }
 
   /**
@@ -169,7 +207,4 @@ public class PlaceService {
    * @param place 장소 Entity
    * @return 장소 조회 결과
    */
-  private PlaceResult toResult(Place place) {
-    return PlaceResult.from(place.getSnapshot());
-  }
 }

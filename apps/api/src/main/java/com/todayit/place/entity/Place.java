@@ -79,20 +79,32 @@ public class Place {
   }
 
   /**
+   * 장소 식별자를 반환합니다.
+   *
+   * @return 장소 식별자
+   */
+  public int getPlaceId() {
+    return placeId;
+  }
+
+  /**
    * 목록 조회에 필요한 장소 정보를 하나의 값으로 반환합니다.
    *
    * @return 장소 조회 정보
    */
   public PlaceSnapshot getSnapshot() {
+    return getSnapshot(images.stream().map(PlaceImage::getImageUrl).toList());
+  }
+
+  /**
+   * 배치 조회한 이미지 URL을 사용해 장소 목록 정보를 반환합니다.
+   *
+   * @param imageUrls 장소 이미지 URL 목록
+   * @return 장소 조회 정보
+   */
+  public PlaceSnapshot getSnapshot(List<String> imageUrls) {
     return new PlaceSnapshot(
-        placeId,
-        name,
-        latitude,
-        longitude,
-        address,
-        category,
-        viewCount,
-        images.stream().map(PlaceImage::getImageUrl).toList());
+        placeId, name, latitude, longitude, address, category, viewCount, List.copyOf(imageUrls));
   }
 
   /**
