@@ -81,7 +81,8 @@ public interface PlaceScrapRepository extends JpaRepository<PlaceScrap, Integer>
               + "(member_id, place_id, is_deleted, created_at) "
               + "values (:memberId, :placeId, false, current_timestamp) "
               + "on conflict (member_id, place_id) do update set "
-              + "is_deleted = false, deleted_at = null, updated_at = current_timestamp",
+              + "is_deleted = false, deleted_at = null, updated_at = current_timestamp "
+              + "where place_scrap.is_deleted = true",
       nativeQuery = true)
   int upsertByMemberIdAndPlaceId(@Param("memberId") String memberId, @Param("placeId") int placeId);
 

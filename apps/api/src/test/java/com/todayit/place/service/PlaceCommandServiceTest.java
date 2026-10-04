@@ -85,6 +85,42 @@ class PlaceCommandServiceTest {
   }
 
   @Test
+  @DisplayName("동시 스크랩으로 upsert가 반영되지 않으면 중복 스크랩 오류를 반환한다")
+  void rejectsConcurrentDuplicateScrap() {
+    // Given
+    when(placeRepository.findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(1))
+        .thenReturn(Optional.of(place));
+    when(placeScrapRepository.existsByMemberIdAndPlacePlaceIdAndIsDeletedFalse("member-1", 1))
+        .thenReturn(false);
+    when(placeScrapRepository.upsertByMemberIdAndPlaceId("member-1", 1)).thenReturn(0);
+    PlaceCommandService service =
+        new PlaceCommandService(placeRepository, placeMemberLikeRepository, placeScrapRepository);
+
+    // When & Then
+    assertThatThrownBy(() -> service.scrapPlace(1, "member-1"))
+        .isInstanceOf(PlaceAlreadyScrappedException.class)
+        .hasMessage("이미 스크랩되었습니다.");
+  }
+
+  @Test
+  @DisplayName("취소했던 스크랩을 다시 활성화하고 스크랩 수를 반환한다")
+  void reactivatesCancelledScrap() {
+    // Given
+    when(placeRepository.findByPlaceIdAndIsActiveTrueAndIsDeletedFalse(1))
+        .thenReturn(Optional.of(place));
+    when(placeScrapRepository.upsertByMemberIdAndPlaceId("member-1", 1)).thenReturn(1);
+    when(placeScrapRepository.countActiveByPlaceId(1)).thenReturn(3L);
+    PlaceCommandService service =
+        new PlaceCommandService(placeRepository, placeMemberLikeRepository, placeScrapRepository);
+
+    // When
+    PlaceScrapResult result = service.scrapPlace(1, "member-1");
+
+    // Then
+    assertThat(result).isEqualTo(new PlaceScrapResult(1, true, 3));
+  }
+
+  @Test
   @DisplayName("장소 스크랩을 취소하고 남은 스크랩 수를 반환한다")
   void cancelsScrap() {
     // Given

@@ -50,7 +50,10 @@ public class PlaceCommandService {
     if (placeScrapRepository.existsByMemberIdAndPlacePlaceIdAndIsDeletedFalse(memberId, placeId)) {
       throw new PlaceAlreadyScrappedException();
     }
-    placeScrapRepository.upsertByMemberIdAndPlaceId(memberId, placeId);
+    int upsertedCount = placeScrapRepository.upsertByMemberIdAndPlaceId(memberId, placeId);
+    if (upsertedCount == 0) {
+      throw new PlaceAlreadyScrappedException();
+    }
 
     return new PlaceScrapResult(placeId, true, placeScrapRepository.countActiveByPlaceId(placeId));
   }
