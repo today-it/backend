@@ -125,6 +125,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/v1/places/*/courses")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/places/*/share")
+                    .permitAll()
 
                     // 컨테이너 오케스트레이션에서 애플리케이션 생존 여부만 확인
                     .requestMatchers(HttpMethod.GET, "/actuator/health/liveness")
@@ -139,7 +141,7 @@ public class SecurityConfig {
                         "/v3/api-docs.yaml")
                     .permitAll()
 
-                    // 위에를 제외한 모든 요청은 인증된 사용자만 접근 가능하도록 설정
+                    // 위를 제외한 모든 요청은 인증된 사용자만 접근 가능하도록 설정
                     .anyRequest()
                     .authenticated())
 
