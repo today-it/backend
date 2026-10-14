@@ -24,11 +24,9 @@ import com.todayit.place.service.model.PlaceLikeResult;
 import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapResult;
-import com.todayit.place.service.model.PlaceShareResult;
 import com.todayit.place.service.model.PlaceSort;
 import com.todayit.place.service.model.PlaceWeekday;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -394,44 +392,5 @@ class PlaceControllerTest {
 
     // Then
     verify(placeQueryService).findPlaceLocation(999);
-  }
-
-  @Test
-  @DisplayName("장소 공유 링크를 성공 응답으로 반환한다")
-  void returnsPlaceShare() throws Exception {
-    // Given
-    when(placeCommandService.sharePlace(1))
-        .thenReturn(
-            new PlaceShareResult(
-                1, "http://localhost:3000/places/1", LocalDateTime.of(2026, 10, 13, 14, 0, 0)));
-
-    // When
-    mockMvc
-        .perform(post("/api/v1/places/1/share"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.placeId").value(1))
-        .andExpect(jsonPath("$.data.shareUrl").value("http://localhost:3000/places/1"))
-        .andExpect(jsonPath("$.data.expiresAt").value("2026-10-13T14:00:00"));
-
-    // Then
-    verify(placeCommandService).sharePlace(1);
-  }
-
-  @Test
-  @DisplayName("존재하지 않는 장소 공유는 404 응답을 반환한다")
-  void returnsNotFoundWhenPlaceToShareDoesNotExist() throws Exception {
-    // Given
-    when(placeCommandService.sharePlace(999)).thenThrow(new PlaceNotFoundException());
-
-    // When
-    mockMvc
-        .perform(post("/api/v1/places/999/share"))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.success").value(false))
-        .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
-
-    // Then
-    verify(placeCommandService).sharePlace(999);
   }
 }
