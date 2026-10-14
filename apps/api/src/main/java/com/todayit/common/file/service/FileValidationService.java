@@ -1,10 +1,10 @@
 package com.todayit.common.file.service;
 
-import com.todayit.common.file.entity.FileExtension;
 import com.todayit.common.file.entity.FileRelatedType;
 import com.todayit.common.file.exception.FileErrorCode;
 import com.todayit.common.file.exception.FileException;
 import com.todayit.common.file.service.model.ValidatedFile;
+import com.todayit.common.file.validation.FileExtension;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;

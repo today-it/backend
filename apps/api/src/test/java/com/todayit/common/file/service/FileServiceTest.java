@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.todayit.common.file.client.FileStorage;
-import com.todayit.common.file.entity.FileExtension;
 import com.todayit.common.file.entity.FileRelatedType;
 import com.todayit.common.file.exception.FileErrorCode;
 import com.todayit.common.file.exception.FileException;
@@ -23,6 +22,7 @@ import com.todayit.common.file.exception.FileStorageException;
 import com.todayit.common.file.service.model.FileRegistrationResult;
 import com.todayit.common.file.service.model.FileResult;
 import com.todayit.common.file.service.model.ValidatedFile;
+import com.todayit.common.file.validation.FileExtension;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;

@@ -1,4 +1,4 @@
-package com.todayit.common.file.entity;
+package com.todayit.common.file.validation;
 
 import java.util.Locale;
 
@@ -31,7 +31,7 @@ public enum FileExtension {
   }
 
   /**
-   * DB에 저장하는 소문자 확장자를 반환합니다.
+   * 검증에 사용할 소문자 확장자를 반환합니다.
    *
    * @return 확장자
    */

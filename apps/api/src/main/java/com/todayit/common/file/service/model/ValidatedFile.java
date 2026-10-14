@@ -1,6 +1,6 @@
 package com.todayit.common.file.service.model;
 
-import com.todayit.common.file.entity.FileExtension;
+import com.todayit.common.file.validation.FileExtension;
 
 /**
  * 검증이 끝난 업로드 파일입니다.
