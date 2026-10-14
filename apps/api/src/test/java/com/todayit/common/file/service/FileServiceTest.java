@@ -191,6 +191,80 @@ class FileServiceTest {
   }
 
   @Test
+  @DisplayName("여러 파일 중간에 외부 삭제가 실패하면 성공한 파일의 메타데이터만 정리한다")
+  void removesSuccessfulMetadataWhenLaterStorageDeletionFails() {
+    // given
+    when(metadata.findAll(FileRelatedType.FAQ_ATTACHMENT, "23"))
+        .thenReturn(
+            List.of(
+                file(1, FileRelatedType.FAQ_ATTACHMENT, "first"),
+                file(2, FileRelatedType.FAQ_ATTACHMENT, "second"),
+                file(3, FileRelatedType.FAQ_ATTACHMENT, "third")));
+    FileStorageException failure = new FileStorageException();
+    doThrow(failure).when(storage).delete("second", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+
+    // when
+    Throwable thrown =
+        catchThrowable(
+            () -> service.delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L, 2L, 3L)));
+
+    // then
+    assertThat(thrown).isSameAs(failure);
+    InOrder order = inOrder(storage, metadata);
+    order.verify(storage).delete("first", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    order.verify(storage).delete("second", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    order.verify(metadata).delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L));
+    verify(storage, never()).delete("third", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    verify(metadata, never()).delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L, 2L, 3L));
+  }
+
+  @Test
+  @DisplayName("부분 삭제 후 메타데이터 정리까지 실패해도 원래 외부 삭제 예외를 유지한다")
+  void preservesStorageFailureWhenPartialMetadataCleanupFails() {
+    // given
+    when(metadata.findAll(FileRelatedType.FAQ_ATTACHMENT, "23"))
+        .thenReturn(
+            List.of(
+                file(1, FileRelatedType.FAQ_ATTACHMENT, "first"),
+                file(2, FileRelatedType.FAQ_ATTACHMENT, "second")));
+    FileStorageException failure = new FileStorageException();
+    DataAccessResourceFailureException cleanupFailure =
+        new DataAccessResourceFailureException("db failure");
+    doThrow(failure).when(storage).delete("second", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    doThrow(cleanupFailure)
+        .when(metadata)
+        .delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L));
+
+    // when
+    Throwable thrown =
+        catchThrowable(() -> service.delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L, 2L)));
+
+    // then
+    assertThat(thrown).isSameAs(failure);
+    assertThat(thrown.getSuppressed()).containsExactly(cleanupFailure);
+  }
+
+  @Test
+  @DisplayName("모든 외부 삭제가 성공하면 중복 없는 성공 식별자 전체의 메타데이터를 정리한다")
+  void removesAllSuccessfulMetadataOnce() {
+    // given
+    when(metadata.findAll(FileRelatedType.FAQ_ATTACHMENT, "23"))
+        .thenReturn(
+            List.of(
+                file(1, FileRelatedType.FAQ_ATTACHMENT, "first"),
+                file(2, FileRelatedType.FAQ_ATTACHMENT, "second")));
+
+    // when
+    service.delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L, 2L, 1L));
+
+    // then
+    InOrder order = inOrder(storage, metadata);
+    order.verify(storage).delete("first", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    order.verify(storage).delete("second", "image/png", FileRelatedType.FAQ_ATTACHMENT);
+    order.verify(metadata).delete(FileRelatedType.FAQ_ATTACHMENT, "23", List.of(1L, 2L));
+  }
+
+  @Test
   @DisplayName("다른 대상의 파일을 포함한 삭제 요청은 외부 삭제 전에 거부한다")
   void rejectsMissingFileBeforeDeletingStorage() {
     // given

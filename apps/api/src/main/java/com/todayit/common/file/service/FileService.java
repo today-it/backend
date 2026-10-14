@@ -125,7 +125,7 @@ public class FileService implements FileManagementService {
   }
 
   /**
-   * 대상에 속한 외부 파일을 먼저 삭제한 뒤 메타데이터를 제거합니다. 외부 삭제 실패 시 메타데이터를 유지합니다.
+   * 대상에 속한 외부 파일을 먼저 삭제한 뒤 성공한 파일의 메타데이터를 제거합니다. 중간 실패 시에도 이전에 삭제한 파일은 정리하고 원래 예외를 전파합니다.
    *
    * @param type 사용처
    * @param relatedId 대상 식별자
@@ -145,10 +145,25 @@ public class FileService implements FileManagementService {
     if (selected.size() != fileIds.stream().distinct().count()) {
       throw new FileException(FileErrorCode.NOT_FOUND);
     }
-    for (FileResult file : selected) {
-      storage.delete(file.storedName(), file.mimeType(), file.relatedType());
+    List<Long> deletedIds = new ArrayList<>();
+    try {
+      for (FileResult file : selected) {
+        storage.delete(file.storedName(), file.mimeType(), file.relatedType());
+        deletedIds.add(file.fileId());
+      }
+    } catch (RuntimeException failure) {
+      if (!deletedIds.isEmpty()) {
+        try {
+          metadata.delete(type, relatedId, deletedIds);
+        } catch (RuntimeException cleanupFailure) {
+          failure.addSuppressed(cleanupFailure);
+        }
+      }
+      throw failure;
     }
-    metadata.delete(type, relatedId, fileIds);
+    if (!deletedIds.isEmpty()) {
+      metadata.delete(type, relatedId, deletedIds);
+    }
   }
 
   /**
