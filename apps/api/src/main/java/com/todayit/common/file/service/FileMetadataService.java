@@ -1,5 +1,6 @@
 package com.todayit.common.file.service;
 
+import com.todayit.common.file.config.FileUploadProperties;
 import com.todayit.common.file.entity.File;
 import com.todayit.common.file.entity.File.FileSnapshot;
 import com.todayit.common.file.entity.FileRelatedType;
@@ -16,14 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FileMetadataService {
   private final FileRepository files;
+  private final FileUploadProperties properties;
 
   /**
    * 메타데이터 서비스를 생성합니다.
    *
    * @param files 파일 저장소
+   * @param properties 문의 첨부 제한 설정
    */
-  public FileMetadataService(FileRepository files) {
+  public FileMetadataService(FileRepository files, FileUploadProperties properties) {
     this.files = files;
+    this.properties = properties;
   }
 
   /**
@@ -44,7 +48,8 @@ public class FileMetadataService {
       long total =
           existing.stream().map(File::getSnapshot).mapToLong(FileSnapshot::sizeBytes).sum()
               + additions.stream().map(File::getSnapshot).mapToLong(FileSnapshot::sizeBytes).sum();
-      if (existing.size() + additions.size() > 5 || total > 31_457_280L) {
+      if (existing.size() + additions.size() > properties.inquiryMaxFiles()
+          || total > properties.inquiryMaxTotalSize().toBytes()) {
         throw new FileException(FileErrorCode.INQUIRY_LIMIT_EXCEEDED);
       }
     }

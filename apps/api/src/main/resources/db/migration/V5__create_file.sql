@@ -10,7 +10,7 @@ CREATE TABLE file (
     CONSTRAINT ck_file_related_type CHECK (
         related_type IN ('MEMBER_PROFILE', 'FAQ_ATTACHMENT', 'INQUIRY_ATTACHMENT')
     ),
-    CONSTRAINT ck_file_size CHECK (size_bytes BETWEEN 1 AND 10485760)
+    CONSTRAINT ck_file_size CHECK (size_bytes >= 1)
 );
 
 CREATE INDEX ix_file_related ON file (related_type, related_id);

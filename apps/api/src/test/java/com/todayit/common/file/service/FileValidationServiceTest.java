@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
+import com.todayit.common.file.config.FileUploadProperties;
 import com.todayit.common.file.entity.FileRelatedType;
 import com.todayit.common.file.exception.FileErrorCode;
 import com.todayit.common.file.exception.FileException;
@@ -20,7 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.boot.servlet.autoconfigure.MultipartProperties;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 @DisplayName("파일 검증 서비스")
@@ -29,7 +32,7 @@ class FileValidationServiceTest {
       Base64.getDecoder()
           .decode(
               "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=");
-  private final FileValidationService validation = new FileValidationService();
+  private final FileValidationService validation = validation(10_485_760, 5, 31_457_280L);
 
   @Test
   @DisplayName("확장자 대소문자와 관계없이 MIME과 실제 형식이 같은 이미지를 허용한다")
@@ -198,6 +201,56 @@ class FileValidationServiceTest {
     // then
     assertFileError(thrown, FileErrorCode.READ_FAILED);
     assertThat(thrown).hasNoCause().hasMessageNotContaining("internal-stream-detail");
+  }
+
+  @Test
+  @DisplayName("multipart 설정의 파일 크기 제한을 변경하면 검증에도 적용한다")
+  void appliesConfiguredMultipartFileSize() {
+    // given
+    FileValidationService configured = validation(PNG.length, 5, 31_457_280L);
+
+    // when
+    List<MultipartFile> accepted = List.of(file("photo.png", "image/png", PNG));
+    List<MultipartFile> oversized =
+        List.of(file("photo.png", "image/png", Arrays.copyOf(PNG, PNG.length + 1)));
+
+    // then
+    assertThat(configured.validate(FileRelatedType.FAQ_ATTACHMENT, accepted)).hasSize(1);
+    assertFileError(
+        catchThrowable(() -> configured.validate(FileRelatedType.FAQ_ATTACHMENT, oversized)),
+        FileErrorCode.INVALID_SIZE);
+  }
+
+  @Test
+  @DisplayName("설정한 문의 첨부 개수와 합계 용량을 각각 적용한다")
+  void appliesConfiguredInquiryLimits() {
+    // given
+    FileValidationService countLimited = validation(PNG.length, 1, PNG.length * 3L);
+    FileValidationService sizeLimited = validation(PNG.length, 3, PNG.length * 2L);
+    MultipartFile image = file("photo.png", "image/png", PNG);
+
+    // then
+    assertThat(countLimited.validate(FileRelatedType.INQUIRY_ATTACHMENT, List.of(image)))
+        .hasSize(1);
+    assertFileError(
+        catchThrowable(
+            () -> countLimited.validate(FileRelatedType.INQUIRY_ATTACHMENT, List.of(image, image))),
+        FileErrorCode.INQUIRY_LIMIT_EXCEEDED);
+    assertThat(sizeLimited.validate(FileRelatedType.INQUIRY_ATTACHMENT, List.of(image, image)))
+        .hasSize(2);
+    assertFileError(
+        catchThrowable(
+            () ->
+                sizeLimited.validate(
+                    FileRelatedType.INQUIRY_ATTACHMENT, List.of(image, image, image))),
+        FileErrorCode.INQUIRY_LIMIT_EXCEEDED);
+  }
+
+  private FileValidationService validation(long maxFileBytes, int maxFiles, long maxTotalBytes) {
+    MultipartProperties multipart = new MultipartProperties();
+    multipart.setMaxFileSize(DataSize.ofBytes(maxFileBytes));
+    return new FileValidationService(
+        multipart, new FileUploadProperties(maxFiles, DataSize.ofBytes(maxTotalBytes)));
   }
 
   private static Stream<Arguments> invalidFiles() {

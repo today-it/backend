@@ -18,6 +18,8 @@ spring:
 
 todayit:
   file:
+    inquiry-max-files: 5
+    inquiry-max-total-size: 30MB
     provider: ${FILE_STORAGE_PROVIDER:}
     cloudinary:
       cloud-name: ${CLOUDINARY_CLOUD_NAME:}

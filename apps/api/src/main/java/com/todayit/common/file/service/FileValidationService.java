@@ -1,5 +1,6 @@
 package com.todayit.common.file.service;
 
+import com.todayit.common.file.config.FileUploadProperties;
 import com.todayit.common.file.entity.FileRelatedType;
 import com.todayit.common.file.exception.FileErrorCode;
 import com.todayit.common.file.exception.FileException;
@@ -10,15 +11,33 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.tika.Tika;
+import org.springframework.boot.servlet.autoconfigure.MultipartProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /** 파일 크기, 확장자, 선언된 MIME과 실제 바이트의 MIME을 함께 검증합니다. */
 @Service
 public class FileValidationService {
-  private static final int MAX_FILE_BYTES = 10_485_760;
-  private static final long MAX_INQUIRY_BYTES = 31_457_280L;
+  private final int maxFileBytes;
+  private final FileUploadProperties properties;
   private final Tika tika = new Tika();
+
+  /**
+   * HTTP 업로드 설정과 문의 첨부 설정을 받아 검증 제한을 구성합니다.
+   *
+   * @param multipartProperties HTTP multipart 설정
+   * @param properties 문의 첨부 제한 설정
+   * @throws IllegalArgumentException 파일 크기 제한이 양수가 아니거나 메모리에 읽을 수 있는 범위를 초과할 때
+   */
+  public FileValidationService(
+      MultipartProperties multipartProperties, FileUploadProperties properties) {
+    long configuredBytes = multipartProperties.getMaxFileSize().toBytes();
+    if (configuredBytes < 1 || configuredBytes >= Integer.MAX_VALUE) {
+      throw new IllegalArgumentException("파일 크기 제한은 1바이트 이상이며 2GiB보다 작아야 합니다.");
+    }
+    this.maxFileBytes = (int) configuredBytes;
+    this.properties = properties;
+  }
 
   /**
    * 외부 업로드 전에 전체 입력을 검증합니다. 탐지는 악성 코드 검사나 완전한 파일 파싱이 아닙니다.
@@ -38,12 +57,13 @@ public class FileValidationService {
     if (type == FileRelatedType.MEMBER_PROFILE && files.size() != 1) {
       throw new FileException(FileErrorCode.PROFILE_LIMIT_EXCEEDED);
     }
-    if (type == FileRelatedType.INQUIRY_ATTACHMENT && files.size() > 5) {
+    if (type == FileRelatedType.INQUIRY_ATTACHMENT && files.size() > properties.inquiryMaxFiles()) {
       throw new FileException(FileErrorCode.INQUIRY_LIMIT_EXCEEDED);
     }
     List<ValidatedFile> validated = files.stream().map(file -> validateOne(type, file)).toList();
     if (type == FileRelatedType.INQUIRY_ATTACHMENT
-        && validated.stream().mapToLong(ValidatedFile::sizeBytes).sum() > MAX_INQUIRY_BYTES) {
+        && validated.stream().mapToLong(ValidatedFile::sizeBytes).sum()
+            > properties.inquiryMaxTotalSize().toBytes()) {
       throw new FileException(FileErrorCode.INQUIRY_LIMIT_EXCEEDED);
     }
     return validated;
@@ -67,7 +87,7 @@ public class FileValidationService {
         || name.codePoints().anyMatch(Character::isISOControl)) {
       throw new FileException(FileErrorCode.INVALID_NAME);
     }
-    if (file.getSize() < 1 || file.getSize() > MAX_FILE_BYTES) {
+    if (file.getSize() < 1 || file.getSize() > maxFileBytes) {
       throw new FileException(FileErrorCode.INVALID_SIZE);
     }
     int dot = name.lastIndexOf('.');
@@ -87,7 +107,7 @@ public class FileValidationService {
       throw new FileException(FileErrorCode.MIME_MISMATCH);
     }
     byte[] content = readContent(file);
-    if (content.length < 1 || content.length > MAX_FILE_BYTES || content.length != file.getSize()) {
+    if (content.length < 1 || content.length > maxFileBytes || content.length != file.getSize()) {
       throw new FileException(FileErrorCode.INVALID_SIZE);
     }
     // 파일명을 탐지기에 전달하지 않아 확장자가 바이트 탐지를 보완하지 못하도록 한다.
@@ -107,7 +127,7 @@ public class FileValidationService {
   private byte[] readContent(MultipartFile file) {
     // MultipartFile 스트림의 checked IOException만 파일 예외로 변환한다.
     try (InputStream input = file.getInputStream()) {
-      return input.readNBytes(MAX_FILE_BYTES + 1);
+      return input.readNBytes(maxFileBytes + 1);
     } catch (IOException exception) {
       throw new FileException(FileErrorCode.READ_FAILED);
     }
