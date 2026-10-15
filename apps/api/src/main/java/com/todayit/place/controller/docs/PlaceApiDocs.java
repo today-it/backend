@@ -13,7 +13,6 @@ import com.todayit.place.dto.response.PlaceResponse;
 import com.todayit.place.dto.response.PlaceScrapResponse;
 import com.todayit.place.entity.Category;
 import com.todayit.place.service.model.PlaceSort;
-import com.todayit.place.service.model.PlaceWeekday;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -38,7 +37,6 @@ public interface PlaceApiDocs {
    *
    * @param region 단일 시·도·시·군·구 이름 또는 상위 지역부터 입력한 경로
    * @param categories 장소 카테고리 목록
-   * @param weekdays 영업 요일
    * @param page 페이지 번호
    * @param size 페이지 크기
    * @param sort 정렬 기준
@@ -47,8 +45,7 @@ public interface PlaceApiDocs {
   @Operation(
       summary = "장소 필터 조회",
       description =
-          "지역·카테고리·영업 요일로 활성 장소를 페이지 단위로 조회합니다. "
-              + "지역은 단독 또는 상하위 조합으로 선택하며, 선택한 지역의 하위 지역도 포함합니다.")
+          "지역·카테고리로 활성 장소를 페이지 단위로 조회합니다. " + "지역은 단독 또는 상하위 조합으로 선택하며, 선택한 지역의 하위 지역도 포함합니다.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -72,10 +69,6 @@ public interface PlaceApiDocs {
                       name = "잘못된 카테고리",
                       value =
                           "{\"success\":false,\"code\":\"INVALID_PLACE_CATEGORY\",\"message\":\"카테고리 필터 값이 올바르지 않습니다.\"}"),
-                  @ExampleObject(
-                      name = "잘못된 요일",
-                      value =
-                          "{\"success\":false,\"code\":\"INVALID_PLACE_WEEKDAY\",\"message\":\"요일 필터 값이 올바르지 않습니다.\"}"),
                   @ExampleObject(
                       name = "잘못된 지역 경로",
                       value =
@@ -125,11 +118,6 @@ public interface PlaceApiDocs {
               },
               array = @ArraySchema(schema = @Schema(implementation = Category.class)))
           List<String> categories,
-      @Parameter(
-              description = "영업 요일 하나를 선택합니다. 생략하면 요일로 필터링하지 않습니다.",
-              example = "MONDAY",
-              schema = @Schema(implementation = PlaceWeekday.class))
-          String weekdays,
       @Parameter(
               description = "페이지 번호입니다. 0부터 시작합니다.",
               example = "0",

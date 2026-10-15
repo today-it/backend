@@ -16,10 +16,7 @@ public enum PlaceErrorCode implements ErrorCode {
 
   /** 요청한 장소 카테고리 필터 값이 올바르지 않은 경우입니다. */
   INVALID_CATEGORY_FILTER(
-      "INVALID_PLACE_CATEGORY", "카테고리 필터 값이 올바르지 않습니다.", ErrorStatus.BAD_REQUEST),
-
-  /** 요청한 장소 영업 요일 필터 값이 올바르지 않은 경우입니다. */
-  INVALID_WEEKDAY_FILTER("INVALID_PLACE_WEEKDAY", "요일 필터 값이 올바르지 않습니다.", ErrorStatus.BAD_REQUEST);
+      "INVALID_PLACE_CATEGORY", "카테고리 필터 값이 올바르지 않습니다.", ErrorStatus.BAD_REQUEST);
 
   /** 클라이언트에 전달할 오류 코드입니다. */
   private final String code;

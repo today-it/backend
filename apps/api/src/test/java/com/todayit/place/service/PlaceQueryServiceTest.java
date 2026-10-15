@@ -17,7 +17,6 @@ import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapSort;
 import com.todayit.place.service.model.PlaceSort;
-import com.todayit.place.service.model.PlaceWeekday;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -61,8 +60,7 @@ class PlaceQueryServiceTest {
             List.of("https://placehold.co/1200x800?text=Restaurant"));
     when(place.getSnapshot(anyList())).thenReturn(snapshot);
     PageRequest pageable = PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "viewCount"));
-    when(placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, false, 0, pageable))
+    when(placeRepository.findPlaces(List.of(0), false, List.of(Category.values()), false, pageable))
         .thenReturn(new PageImpl<>(List.of(place), PageRequest.of(1, 2), 3));
     PlaceQueryService placeQueryService =
         new PlaceQueryService(
@@ -70,7 +68,7 @@ class PlaceQueryServiceTest {
 
     // When
     PageResult<PlaceResult> result =
-        placeQueryService.findPlaces(null, List.of(), null, 1, 2, PlaceSort.POPULAR);
+        placeQueryService.findPlaces(null, List.of(), 1, 2, PlaceSort.POPULAR);
 
     // Then
     assertThat(result.content())
@@ -93,26 +91,18 @@ class PlaceQueryServiceTest {
             false,
             List.of(Category.values()),
             false,
-            false,
-            0,
             PageRequest.of(1, 2, Sort.by(Sort.Direction.DESC, "viewCount")));
     verify(placeImageRepository).findByPlacePlaceIdInOrderByPlacePlaceIdAscCreatedAtAsc(List.of(1));
   }
 
   @Test
-  @DisplayName("지역, 카테고리, 영업 요일 필터를 조합해 장소를 조회한다")
+  @DisplayName("지역과 카테고리 필터를 조합해 장소를 조회한다")
   void findsPlacesWithFilters() {
     // Given
     PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
     when(regionPlaceQueryService.findRegionIds(" 서울특별시 동대문구 ")).thenReturn(List.of(10));
     when(placeRepository.findPlaces(
-            List.of(10),
-            true,
-            List.of(Category.RESTAURANT, Category.CAFE_DESSERT),
-            true,
-            true,
-            1,
-            pageable))
+            List.of(10), true, List.of(Category.RESTAURANT, Category.CAFE_DESSERT), true, pageable))
         .thenReturn(Page.empty(pageable));
     PlaceQueryService placeQueryService =
         new PlaceQueryService(
@@ -123,7 +113,6 @@ class PlaceQueryServiceTest {
         placeQueryService.findPlaces(
             " 서울특별시 동대문구 ",
             List.of(Category.RESTAURANT, Category.CAFE_DESSERT),
-            PlaceWeekday.MONDAY,
             0,
             20,
             PlaceSort.LATEST);
@@ -132,13 +121,7 @@ class PlaceQueryServiceTest {
     assertThat(result.content()).isEmpty();
     verify(placeRepository)
         .findPlaces(
-            List.of(10),
-            true,
-            List.of(Category.RESTAURANT, Category.CAFE_DESSERT),
-            true,
-            true,
-            1,
-            pageable);
+            List.of(10), true, List.of(Category.RESTAURANT, Category.CAFE_DESSERT), true, pageable);
   }
 
   @Test

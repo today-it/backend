@@ -14,11 +14,9 @@ import com.todayit.place.dto.response.PlaceResponse;
 import com.todayit.place.dto.response.PlaceScrapResponse;
 import com.todayit.place.entity.Category;
 import com.todayit.place.exception.InvalidPlaceCategoryFilterException;
-import com.todayit.place.exception.InvalidPlaceWeekdayFilterException;
 import com.todayit.place.service.PlaceCommandService;
 import com.todayit.place.service.PlaceQueryService;
 import com.todayit.place.service.model.PlaceSort;
-import com.todayit.place.service.model.PlaceWeekday;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -43,8 +41,6 @@ public class PlaceController implements PlaceApiDocs {
   private static final int DEFAULT_SIZE = 20;
   private static final Set<String> CATEGORY_FILTER_VALUES =
       Arrays.stream(Category.values()).map(Enum::name).collect(Collectors.toUnmodifiableSet());
-  private static final Set<String> WEEKDAY_FILTER_VALUES =
-      Arrays.stream(PlaceWeekday.values()).map(Enum::name).collect(Collectors.toUnmodifiableSet());
 
   private final PlaceQueryService placeQueryService;
   private final PlaceCommandService placeCommandService;
@@ -71,7 +67,6 @@ public class PlaceController implements PlaceApiDocs {
    *
    * @param region 단일 시·도·시·군·구 이름 또는 상위 지역부터 입력한 경로
    * @param categories 장소 카테고리 목록
-   * @param weekdays 영업 요일
    * @param page 페이지 번호
    * @param size 페이지 크기
    * @param sort 정렬 기준
@@ -81,18 +76,15 @@ public class PlaceController implements PlaceApiDocs {
   public ResponseEntity<CommonResponse<PageResponse<PlaceResponse>>> findPlaces(
       @RequestParam(required = false) String region,
       @RequestParam(required = false) List<String> categories,
-      @RequestParam(required = false) String weekdays,
       @RequestParam(defaultValue = "" + DEFAULT_PAGE) int page,
       @RequestParam(defaultValue = "" + DEFAULT_SIZE) int size,
       @RequestParam(defaultValue = "LATEST") PlaceSort sort) {
     PaginationValidator.validate(page, size);
     List<Category> categoryFilters = parseCategories(categories);
-    PlaceWeekday weekdayFilter = parseWeekday(weekdays);
     return ResponseEntity.ok(
         CommonResponse.success(
             PageResponse.from(
-                placeQueryService.findPlaces(
-                    region, categoryFilters, weekdayFilter, page, size, sort),
+                placeQueryService.findPlaces(region, categoryFilters, page, size, sort),
                 PlaceResponse::from)));
   }
 
@@ -115,24 +107,6 @@ public class PlaceController implements PlaceApiDocs {
     }
 
     return categories.stream().map(Category::valueOf).toList();
-  }
-
-  /**
-   * 요청 요일 값을 장소 영업 요일로 변환합니다.
-   *
-   * @param weekday 요청 요일 값
-   * @return 변환한 장소 영업 요일, 파라미터를 생략하면 {@code null}
-   * @throws InvalidPlaceWeekdayFilterException 빈 값이거나 지원하지 않는 요일일 때
-   */
-  private PlaceWeekday parseWeekday(String weekday) {
-    if (weekday == null) {
-      return null;
-    }
-    if (weekday.isBlank() || !WEEKDAY_FILTER_VALUES.contains(weekday)) {
-      throw new InvalidPlaceWeekdayFilterException();
-    }
-
-    return PlaceWeekday.valueOf(weekday);
   }
 
   /**

@@ -20,8 +20,6 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
    * @param regionFiltered 지역 필터 적용 여부
    * @param categories 장소 카테고리 목록
    * @param categoryFiltered 카테고리 필터 적용 여부
-   * @param weekdayFiltered 영업 요일 필터 적용 여부
-   * @param weekday ISO-8601 요일 값
    * @param pageable 페이지와 정렬 조건
    * @return 조건에 맞는 장소 페이지
    */
@@ -33,11 +31,7 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
               + "select regionPlace.regionPlaceId from RegionPlace regionPlace "
               + "where regionPlace.place = place "
               + "and regionPlace.region.regionId in :regionIds)) "
-              + "and (:categoryFiltered = false or place.category in :categories) "
-              + "and (:weekdayFiltered = false or exists ("
-              + "select hours.hoursId from Hours hours "
-              + "where hours.place = place "
-              + "and function('date_part', 'isodow', hours.openDate) = :weekday))",
+              + "and (:categoryFiltered = false or place.category in :categories)",
       countQuery =
           "select count(distinct place) from Place place "
               + "where place.isActive = true and place.isDeleted = false "
@@ -45,18 +39,12 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
               + "select regionPlace.regionPlaceId from RegionPlace regionPlace "
               + "where regionPlace.place = place "
               + "and regionPlace.region.regionId in :regionIds)) "
-              + "and (:categoryFiltered = false or place.category in :categories) "
-              + "and (:weekdayFiltered = false or exists ("
-              + "select hours.hoursId from Hours hours "
-              + "where hours.place = place "
-              + "and function('date_part', 'isodow', hours.openDate) = :weekday))")
+              + "and (:categoryFiltered = false or place.category in :categories)")
   Page<Place> findPlaces(
       @Param("regionIds") List<Integer> regionIds,
       @Param("regionFiltered") boolean regionFiltered,
       @Param("categories") List<Category> categories,
       @Param("categoryFiltered") boolean categoryFiltered,
-      @Param("weekdayFiltered") boolean weekdayFiltered,
-      @Param("weekday") int weekday,
       Pageable pageable);
 
   /**

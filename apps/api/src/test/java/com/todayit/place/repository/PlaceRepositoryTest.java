@@ -20,7 +20,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-
 /** PostgreSQL 장소 목록 조회 Repository의 조건과 페이징을 검증합니다. */
 @Testcontainers
 @ActiveProfiles("test")
@@ -67,7 +66,7 @@ class PlaceRepositoryTest {
     // When
     Page<Place> result =
         placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, false, 0, PageRequest.of(0, 10));
+            List.of(0), false, List.of(Category.values()), false, PageRequest.of(0, 10));
 
     // Then
     assertThat(result.getTotalElements()).isEqualTo(1);
@@ -76,7 +75,7 @@ class PlaceRepositoryTest {
   }
 
   @Test
-  @DisplayName("지역, 다중 카테고리, 영업 요일이 모두 일치하는 장소만 조회한다")
+  @DisplayName("지역과 다중 카테고리 조건이 일치하는 장소를 영업시간 등록 여부와 관계없이 조회한다")
   @Transactional
   void findsPlacesMatchingAllFilters() {
     // Given
@@ -84,15 +83,12 @@ class PlaceRepositoryTest {
         jdbcTemplate.queryForObject(
             "INSERT INTO region (si, gun, gu) VALUES ('서울특별시', '해당 없음', '종로구') RETURNING region_id",
             Integer.class);
-    Integer restaurantId = insertPlace("월요일 식당", "RESTAURANT");
-    Integer cafeId = insertPlace("화요일 카페", "CAFE_DESSERT");
-    Integer barId = insertPlace("월요일 바", "BAR");
+    Integer restaurantId = insertPlace("식당", "RESTAURANT");
+    Integer cafeId = insertPlace("카페", "CAFE_DESSERT");
+    Integer barId = insertPlace("바", "BAR");
     linkRegion(regionId, restaurantId);
     linkRegion(regionId, cafeId);
     linkRegion(regionId, barId);
-    insertHours(restaurantId, "2026-10-05T09:00:00");
-    insertHours(cafeId, "2026-10-06T09:00:00");
-    insertHours(barId, "2026-10-05T18:00:00");
 
     // When
     Page<Place> result =
@@ -101,13 +97,13 @@ class PlaceRepositoryTest {
             true,
             List.of(Category.RESTAURANT, Category.CAFE_DESSERT),
             true,
-            true,
-            1,
             PageRequest.of(0, 10));
 
     // Then
-    assertThat(result.getTotalElements()).isEqualTo(1);
-    assertThat(result.getContent().getFirst().getSnapshot().name()).isEqualTo("월요일 식당");
+    assertThat(result.getTotalElements()).isEqualTo(2);
+    assertThat(result.getContent())
+        .extracting(place -> place.getSnapshot().name())
+        .containsExactlyInAnyOrder("식당", "카페");
   }
 
   @Test
@@ -132,8 +128,6 @@ class PlaceRepositoryTest {
             true,
             List.of(Category.values()),
             false,
-            false,
-            0,
             PageRequest.of(0, 10));
 
     // Then
@@ -147,8 +141,6 @@ class PlaceRepositoryTest {
             true,
             List.of(Category.values()),
             false,
-            false,
-            0,
             PageRequest.of(0, 10));
     assertThat(districtResult.getContent())
         .extracting(place -> place.getSnapshot().name())
@@ -180,19 +172,5 @@ class PlaceRepositoryTest {
   private void linkRegion(int regionId, int placeId) {
     jdbcTemplate.update(
         "INSERT INTO region_place (region_id, place_id) VALUES (?, ?)", regionId, placeId);
-  }
-
-  private void insertHours(int placeId, String openDate) {
-    jdbcTemplate.update(
-        """
-        INSERT INTO hours (place_id, open_date, start_at, end_at)
-        VALUES (?, CAST(? AS TIMESTAMP WITH TIME ZONE),
-                CAST(? AS TIMESTAMP WITH TIME ZONE),
-                CAST(? AS TIMESTAMP WITH TIME ZONE) + INTERVAL '1 hour')
-        """,
-        placeId,
-        openDate,
-        openDate,
-        openDate);
   }
 }

@@ -14,7 +14,6 @@ import com.todayit.place.service.model.PlaceLocationResult;
 import com.todayit.place.service.model.PlaceResult;
 import com.todayit.place.service.model.PlaceScrapSort;
 import com.todayit.place.service.model.PlaceSort;
-import com.todayit.place.service.model.PlaceWeekday;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +57,6 @@ public class PlaceQueryService implements PlaceScrapQueryService {
    *
    * @param region 단일 시·도·시·군·구 이름 또는 상위 지역부터 입력한 경로
    * @param categories 장소 카테고리 목록
-   * @param weekday 영업 요일
    * @param page 페이지 번호
    * @param size 페이지 크기
    * @param sort 정렬 기준
@@ -66,12 +64,7 @@ public class PlaceQueryService implements PlaceScrapQueryService {
    */
   @Transactional(readOnly = true)
   public PageResult<PlaceResult> findPlaces(
-      String region,
-      List<Category> categories,
-      PlaceWeekday weekday,
-      int page,
-      int size,
-      PlaceSort sort) {
+      String region, List<Category> categories, int page, int size, PlaceSort sort) {
     Sort order =
         sort == PlaceSort.LATEST
             ? Sort.by(Sort.Direction.DESC, "createdAt")
@@ -83,16 +76,12 @@ public class PlaceQueryService implements PlaceScrapQueryService {
     boolean categoryFiltered = categories != null && !categories.isEmpty();
     List<Category> categoryFilters =
         categoryFiltered ? List.copyOf(categories) : Arrays.asList(Category.values());
-    boolean weekdayFiltered = weekday != null;
-    int weekdayFilter = weekdayFiltered ? weekday.getIsoValue() : 0;
     Page<Place> placePage =
         placeRepository.findPlaces(
             regionIds,
             regionFiltered,
             categoryFilters,
             categoryFiltered,
-            weekdayFiltered,
-            weekdayFilter,
             PageRequest.of(page, size, order));
     List<Place> places = placePage.getContent();
     Map<Integer, List<String>> imageUrlsByPlaceId = findImageUrlsByPlaceId(places);
