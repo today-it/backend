@@ -76,7 +76,7 @@ public interface PlaceApiDocs {
                   @ExampleObject(
                       name = "잘못된 페이지",
                       value =
-                          "{\"success\":false,\"code\":\"INVALID_PAGINATION\",\"message\":\"페이지 요청값이 올바르지 않습니다.\"} shipment")
+                          "{\"success\":false,\"code\":\"INVALID_PAGINATION\",\"message\":\"페이지 요청값이 올바르지 않습니다.\"}")
                 })),
     @ApiResponse(
         responseCode = "500",
