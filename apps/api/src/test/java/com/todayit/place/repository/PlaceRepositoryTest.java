@@ -209,7 +209,7 @@ class PlaceRepositoryTest {
         ) VALUES
             ('활성 장소', 37.50000000, 127.00000000, '주소 1', 'RESTAURANT', 10, TRUE, FALSE),
             ('비활성 장소', 37.50000000, 127.00000000, '주소 2', 'CAFE_DESSERT', 20, FALSE, FALSE),
-            ('삭제 장소', 37.50000000, 127.00000000, '주소 3', 'BAR', 30, TRUE, TRUE)
+            ('삭제 장소', 37.50000000, 127.00000000, '주소 3', 'RESTAURANT', 30, TRUE, TRUE)
         """);
 
     // When
@@ -234,10 +234,10 @@ class PlaceRepositoryTest {
             Integer.class);
     Integer restaurantId = insertPlace("식당", "RESTAURANT");
     Integer cafeId = insertPlace("카페", "CAFE_DESSERT");
-    Integer barId = insertPlace("바", "BAR");
+    Integer performanceId = insertPlace("공연장", "PERFORMANCE");
     linkRegion(regionId, restaurantId);
     linkRegion(regionId, cafeId);
-    linkRegion(regionId, barId);
+    linkRegion(regionId, performanceId);
 
     // When
     Page<Place> result =
@@ -265,7 +265,7 @@ class PlaceRepositoryTest {
     Integer suwonRegionId = insertRegion("경기도", "수원시", "팔달구");
     Integer jongnoPlaceId = insertPlace("종로 장소", "RESTAURANT");
     Integer mapoPlaceId = insertPlace("마포 장소", "CAFE_DESSERT");
-    Integer suwonPlaceId = insertPlace("수원 장소", "BAR");
+    Integer suwonPlaceId = insertPlace("수원 장소", "RESTAURANT");
     linkRegion(jongnoRegionId, jongnoPlaceId);
     linkRegion(mapoRegionId, mapoPlaceId);
     linkRegion(suwonRegionId, suwonPlaceId);

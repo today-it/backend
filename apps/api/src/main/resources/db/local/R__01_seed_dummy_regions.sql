@@ -1,5 +1,3 @@
--- 하위 구가 있는 시의 상위 13행은 제외하고, si·gun·gu에 코드만 저장합니다.
--- 하위 단계가 없는 컬럼은 '000'입니다.
 INSERT INTO region (si, gun, gu)
 SELECT seed.si, seed.gun, seed.gu
 FROM (

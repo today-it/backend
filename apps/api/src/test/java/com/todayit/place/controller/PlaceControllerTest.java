@@ -285,6 +285,39 @@ class PlaceControllerTest {
   }
 
   @Test
+  @DisplayName("술집은 독립 카테고리 필터로 받지 않는다")
+  void rejectsRemovedBarCategory() throws Exception {
+    // When & Then
+    mockMvc
+        .perform(get("/api/v1/places").param("categories", "BAR"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PLACE_CATEGORY"));
+    verifyNoInteractions(placeQueryService);
+  }
+
+  @Test
+  @DisplayName("기존 영화·공연 카테고리 필터는 받지 않는다")
+  void rejectsRemovedMovieCategory() throws Exception {
+    // When & Then
+    mockMvc
+        .perform(get("/api/v1/places").param("categories", "MOVIE_PERFORMANCE"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PLACE_CATEGORY"));
+    verifyNoInteractions(placeQueryService);
+  }
+
+  @Test
+  @DisplayName("스파 카테고리 필터는 받지 않는다")
+  void rejectsRemovedSpaCategory() throws Exception {
+    // When & Then
+    mockMvc
+        .perform(get("/api/v1/places").param("categories", "RELAXATION_SPA"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PLACE_CATEGORY"));
+    verifyNoInteractions(placeQueryService);
+  }
+
+  @Test
   @DisplayName("지원하지 않는 카테고리 필터는 400 응답을 반환한다")
   void returnsBadRequestForInvalidCategory() throws Exception {
     // When

@@ -164,19 +164,17 @@ public interface PlaceApiDocs {
               examples = {
                 @ExampleObject(name = "음식점", value = "[\"RESTAURANT\"]"),
                 @ExampleObject(name = "카페·디저트", value = "[\"CAFE_DESSERT\"]"),
-                @ExampleObject(name = "술집", value = "[\"BAR\"]"),
-                @ExampleObject(name = "전시·문화", value = "[\"EXHIBITION_CULTURE\"]"),
-                @ExampleObject(name = "영화·공연", value = "[\"MOVIE_PERFORMANCE\"]"),
-                @ExampleObject(name = "체험·공방", value = "[\"EXPERIENCE_WORKSHOP\"]"),
-                @ExampleObject(name = "놀이·활동", value = "[\"PLAY_ACTIVITY\"]"),
+                @ExampleObject(name = "전시·박물관", value = "[\"EXHIBITION_MUSEUM\"]"),
+                @ExampleObject(name = "공연", value = "[\"PERFORMANCE\"]"),
+                @ExampleObject(name = "체험", value = "[\"EXPERIENCE\"]"),
+                @ExampleObject(name = "놀이·레저", value = "[\"PLAY_LEISURE\"]"),
                 @ExampleObject(name = "자연·산책", value = "[\"NATURE_WALK\"]"),
                 @ExampleObject(name = "쇼핑", value = "[\"SHOPPING\"]"),
                 @ExampleObject(name = "명소·전망", value = "[\"LANDMARK_VIEW\"]"),
-                @ExampleObject(name = "휴식·스파", value = "[\"RELAXATION_SPA\"]"),
                 @ExampleObject(name = "음식점 + 카페·디저트", value = "[\"RESTAURANT\",\"CAFE_DESSERT\"]"),
                 @ExampleObject(
-                    name = "전시·문화 + 영화·공연",
-                    value = "[\"EXHIBITION_CULTURE\",\"MOVIE_PERFORMANCE\"]"),
+                    name = "전시·박물관 + 공연",
+                    value = "[\"EXHIBITION_MUSEUM\",\"PERFORMANCE\"]"),
                 @ExampleObject(
                     name = "자연·산책 + 명소·전망",
                     value = "[\"NATURE_WALK\",\"LANDMARK_VIEW\"]")
