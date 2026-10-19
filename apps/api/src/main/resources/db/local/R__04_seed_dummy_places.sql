@@ -79,24 +79,24 @@ SELECT
     place.place_id
 FROM (
     VALUES
-        ('오늘의 식당', '종로구'),
-        ('종로 카페거리', '종로구'),
-        ('달빛 와인바', '종로구'),
-        ('서울 전시 공간', '종로구'),
-        ('시네마 종로', '종로구'),
-        ('도예 원데이 클래스', '종로구'),
-        ('도심 보드게임 라운지', '종로구'),
-        ('북악산 산책로', '종로구'),
-        ('인사동 소품 상점', '종로구'),
-        ('남산 전망대', '중구'),
-        ('도심 스파', '중구'),
-        ('운영 중단 장소', '종로구'),
-        ('삭제된 장소', '종로구')
+        ('오늘의 식당', '110'),
+        ('종로 카페거리', '110'),
+        ('달빛 와인바', '110'),
+        ('서울 전시 공간', '110'),
+        ('시네마 종로', '110'),
+        ('도예 원데이 클래스', '110'),
+        ('도심 보드게임 라운지', '110'),
+        ('북악산 산책로', '110'),
+        ('인사동 소품 상점', '110'),
+        ('남산 전망대', '140'),
+        ('도심 스파', '140'),
+        ('운영 중단 장소', '110'),
+        ('삭제된 장소', '110')
 ) AS seed(place_name, gu)
 JOIN place ON place.name = seed.place_name
 JOIN region
-  ON region.si = '서울특별시'
- AND region.gun = '해당 없음'
+  ON region.si = '11'
+ AND region.gun = '000'
  AND region.gu = seed.gu
 WHERE NOT EXISTS (
     SELECT 1
@@ -137,14 +137,7 @@ SELECT
     TRUE,
     FALSE
 FROM (
-    SELECT
-        region.region_id,
-        CASE
-            WHEN region.gun = '해당 없음' AND region.gu = '해당 없음' THEN region.si
-            WHEN region.gun = '해당 없음' THEN region.si || ' ' || region.gu
-            WHEN region.gu = '해당 없음' THEN region.si || ' ' || region.gun
-            ELSE region.si || ' ' || region.gun || ' ' || region.gu
-        END AS region_name
+    SELECT region_id, si || ' ' || gun || ' ' || gu AS region_name
     FROM region
 ) AS seed
 WHERE NOT EXISTS (
@@ -177,17 +170,7 @@ SELECT
     region.region_id,
     place.place_id
 FROM region
-JOIN place
-  ON place.name =
-      CASE
-          WHEN region.gun = '해당 없음' AND region.gu = '해당 없음'
-              THEN region.si || ' 대표 장소'
-          WHEN region.gun = '해당 없음'
-              THEN region.si || ' ' || region.gu || ' 대표 장소'
-          WHEN region.gu = '해당 없음'
-              THEN region.si || ' ' || region.gun || ' 대표 장소'
-          ELSE region.si || ' ' || region.gun || ' ' || region.gu || ' 대표 장소'
-      END
+JOIN place ON place.name = region.si || ' ' || region.gun || ' ' || region.gu || ' 대표 장소'
 WHERE NOT EXISTS (
     SELECT 1
     FROM region_place

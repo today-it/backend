@@ -2,6 +2,7 @@ package com.todayit.place.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.todayit.course.repository.RegionRepository;
 import com.todayit.place.entity.Category;
 import com.todayit.place.entity.Place;
 import java.util.List;
@@ -15,9 +16,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -53,6 +57,135 @@ class PlaceRepositoryTest {
   @Autowired private PlaceRepository placeRepository;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private RegionRepository regionRepository;
+
+  @Test
+  @DisplayName("시도 코드만으로 조회한다")
+  @Transactional
+  void findsRegionsBySiOnly() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes("41", null, null);
+
+    // Then
+    assertThat(regionIds).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("시군 코드만으로 조회한다")
+  @Transactional
+  void findsRegionsByGunOnly() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes(null, "110", null);
+
+    // Then
+    assertThat(regionIds).hasSize(3);
+  }
+
+  @Test
+  @DisplayName("구 코드만으로 조회한다")
+  @Transactional
+  void findsRegionsByGuOnly() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes(null, null, "111");
+
+    // Then
+    assertThat(regionIds).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("시도와 시군 코드를 함께 적용한다")
+  @Transactional
+  void findsRegionsBySiAndGun() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes("41", "110", null);
+
+    // Then
+    assertThat(regionIds).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("지역 코드 세 조건을 모두 적용한다")
+  @Transactional
+  void findsRegionsByAllCodes() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes("41", "110", "111");
+
+    // Then
+    assertThat(regionIds).hasSize(1);
+  }
+
+  @Test
+  @DisplayName("일치하지 않는 코드 조합은 조회되지 않는다")
+  @Transactional
+  void findsRegionsByMismatchedCodes() {
+    // Given
+    jdbcTemplate.update(
+        "INSERT INTO region (si, gun, gu) VALUES ('41', '110', '111'), ('41', '110', '113'), ('26', '110', '111')");
+
+    // When
+    List<Integer> regionIds = regionRepository.findIdsByCodes("11", "110", "111");
+
+    // Then
+    assertThat(regionIds).hasSize(0);
+  }
+
+  @Test
+  @DisplayName("지역과 장소 시드를 재실행해도 코드 기준으로 중복 없이 저장한다")
+  @Transactional
+  void repeatsCodeSeedsWithoutDuplicates() {
+    // When
+    jdbcTemplate.execute(
+        (ConnectionCallback<Void>)
+            connection -> {
+              ScriptUtils.executeSqlScript(
+                  connection, new ClassPathResource("db/local/R__01_seed_dummy_regions.sql"));
+              ScriptUtils.executeSqlScript(
+                  connection, new ClassPathResource("db/local/R__04_seed_dummy_places.sql"));
+              ScriptUtils.executeSqlScript(
+                  connection, new ClassPathResource("db/local/R__01_seed_dummy_regions.sql"));
+              ScriptUtils.executeSqlScript(
+                  connection, new ClassPathResource("db/local/R__04_seed_dummy_places.sql"));
+              return null;
+            });
+
+    // Then
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM region WHERE si ~ '^[0-9]{2}$' AND gun ~ '^[0-9]{3}$' AND gu ~ '^[0-9]{3}$'",
+                Integer.class))
+        .isEqualTo(256);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM place WHERE name LIKE '% 대표 장소'", Integer.class))
+        .isEqualTo(256);
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM region_place", Integer.class))
+        .isEqualTo(269);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT address FROM place WHERE name = '41 110 111 대표 장소'", String.class))
+        .isEqualTo("41 110 111 중앙로 1");
+  }
 
   @BeforeEach
   void setUp() {
