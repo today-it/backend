@@ -47,7 +47,7 @@ public class PopularityCalculatorService {
    */
   public List<PopularityCandidate> evaluateAndRank(
       PopularityTargetType targetType, List<PopularityCandidate> candidates) {
-    Objects.requireNonNull(targetType, "targetType must not be null");
+    Objects.requireNonNull(targetType, "대상 유형은 필수입니다.");
     if (candidates == null || candidates.isEmpty()) {
       return List.of();
     }
@@ -82,7 +82,7 @@ public class PopularityCalculatorService {
    */
   public List<PopularityCandidate> rankByFallbackOrder(
       PopularityTargetType targetType, List<PopularityCandidate> candidates) {
-    Objects.requireNonNull(targetType, "targetType must not be null");
+    Objects.requireNonNull(targetType, "대상 유형은 필수입니다.");
     if (candidates == null || candidates.isEmpty()) {
       return List.of();
     }

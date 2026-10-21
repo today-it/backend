@@ -47,10 +47,10 @@ public class PopularityCandidate {
       long scrapCount,
       long validViewCount,
       Instant exposedAt) {
-    this.targetType = Objects.requireNonNull(targetType, "targetType must not be null");
-    this.targetId = Objects.requireNonNull(targetId, "targetId must not be null");
+    this.targetType = Objects.requireNonNull(targetType, "대상 유형은 필수입니다.");
+    this.targetId = Objects.requireNonNull(targetId, "대상 식별자는 필수입니다.");
     if (likeCount < 0 || scrapCount < 0 || validViewCount < 0) {
-      throw new IllegalArgumentException("Reaction and view counts must not be negative");
+      throw new IllegalArgumentException("반응 수 및 조회수는 음수일 수 없습니다.");
     }
     this.visible = visible;
     this.deleted = deleted;

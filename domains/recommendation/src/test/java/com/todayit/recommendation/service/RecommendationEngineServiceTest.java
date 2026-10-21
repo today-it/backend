@@ -2,6 +2,7 @@ package com.todayit.recommendation.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.todayit.recommendation.model.CourseCandidate;
@@ -148,5 +149,22 @@ class RecommendationEngineServiceTest {
     assertEquals(
         List.of("course-recent-1", "course-recent-2", "course-B", "course-null"),
         ranked.stream().map(CourseCandidate::getCourseId).toList());
+  }
+
+  @Test
+  @DisplayName("일치 장소 수가 전체 장소 수를 초과하거나 음수이면 IllegalArgumentException을 던진다")
+  void shouldRejectInvalidPlaceCounts() {
+    // then
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CourseCandidate("course-err-1", true, false, 1, 2, Set.of(), 0.0, Instant.now()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CourseCandidate("course-err-2", true, false, -1, 0, Set.of(), 0.0, Instant.now()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CourseCandidate("course-err-3", true, false, 2, -1, Set.of(), 0.0, Instant.now()));
   }
 }

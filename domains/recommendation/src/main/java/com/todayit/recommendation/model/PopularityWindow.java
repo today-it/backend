@@ -28,7 +28,7 @@ public class PopularityWindow {
    * @throws NullPointerException referenceTime이 null인 경우
    */
   public PopularityWindow(Instant referenceTime) {
-    Objects.requireNonNull(referenceTime, "referenceTime must not be null");
+    Objects.requireNonNull(referenceTime, "집계 기준시각은 필수입니다.");
     LocalDate referenceDateKst = LocalDate.ofInstant(referenceTime, KST_ZONE);
     LocalDate startDateKst = referenceDateKst.minusDays(WINDOW_DAYS - 1L);
     this.startInclusive = startDateKst.atStartOfDay(KST_ZONE).toInstant();

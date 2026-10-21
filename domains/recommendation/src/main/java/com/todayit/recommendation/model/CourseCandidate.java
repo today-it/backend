@@ -39,12 +39,13 @@ public class CourseCandidate {
    * @param courseId 코스 식별자 (null 불가)
    * @param visible 공개·확정 여부
    * @param deleted 삭제 여부
-   * @param totalPlaceCount 코스에 포함된 전체 장소 수
-   * @param matchingDongPlaceCount 선호 동에 포함된 장소 수
+   * @param totalPlaceCount 코스에 포함된 전체 장소 수 (0 이상)
+   * @param matchingDongPlaceCount 선호 동에 포함된 장소 수 (0 이상, totalPlaceCount 이하)
    * @param concepts 코스 콘셉트 목록 (null 허용, 빈 Set 처리)
    * @param popularityRawScore 최근 14일 인기 원점수 (0 이상)
    * @param publishedAt 코스 공개일 (null 허용)
    * @throws NullPointerException courseId가 null인 경우
+   * @throws IllegalArgumentException 장소 수가 음수이거나 일치 장소 수가 전체 장소 수를 초과하는 경우
    */
   public CourseCandidate(
       String courseId,
@@ -55,11 +56,21 @@ public class CourseCandidate {
       Set<String> concepts,
       double popularityRawScore,
       Instant publishedAt) {
-    this.courseId = Objects.requireNonNull(courseId, "courseId must not be null");
+    this.courseId = Objects.requireNonNull(courseId, "코스 식별자는 필수입니다.");
+    if (totalPlaceCount < 0) {
+      throw new IllegalArgumentException("전체 장소 수는 음수일 수 없습니다.");
+    }
+    if (matchingDongPlaceCount < 0) {
+      throw new IllegalArgumentException("일치 장소 수는 음수일 수 없습니다.");
+    }
+    if (matchingDongPlaceCount > totalPlaceCount) {
+      throw new IllegalArgumentException("일치 장소 수는 전체 장소 수를 초과할 수 없습니다.");
+    }
+
     this.visible = visible;
     this.deleted = deleted;
-    this.totalPlaceCount = Math.max(0, totalPlaceCount);
-    this.matchingDongPlaceCount = Math.max(0, matchingDongPlaceCount);
+    this.totalPlaceCount = totalPlaceCount;
+    this.matchingDongPlaceCount = matchingDongPlaceCount;
     this.concepts =
         concepts == null
             ? Collections.emptySet()

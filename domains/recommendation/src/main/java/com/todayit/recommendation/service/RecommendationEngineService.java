@@ -45,7 +45,7 @@ public class RecommendationEngineService {
    */
   public List<CourseCandidate> evaluateAndRank(
       RecommendationContext context, List<CourseCandidate> candidates) {
-    Objects.requireNonNull(context, "context must not be null");
+    Objects.requireNonNull(context, "추천 컨텍스트는 필수입니다.");
     if (candidates == null || candidates.isEmpty()) {
       return List.of();
     }
