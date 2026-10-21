@@ -50,7 +50,6 @@ public class RecommendationEngineService {
       return List.of();
     }
 
-    // 1. 후보군 사전 전처리: 콘셉트 일치율 C 계산 및 후보군 최대 인기 원점수 기준 P 정규화
     double maxPopularityRawScore =
         candidates.stream()
             .filter(Objects::nonNull)
@@ -60,12 +59,12 @@ public class RecommendationEngineService {
 
     for (CourseCandidate candidate : candidates) {
       if (candidate != null) {
+        candidate.setFallbackToPopular(false);
         candidate.calculateConceptScore(context.getSelectedConcepts());
         candidate.normalizePopularityScore(maxPopularityRawScore);
       }
     }
 
-    // 2. Drools Rule Unit 실행 (가중치 계산 및 신호 누락 재정규화)
     RecommendationRuleUnit unitData = new RecommendationRuleUnit();
     unitData.getContext().add(context);
     for (CourseCandidate candidate : candidates) {
@@ -79,7 +78,6 @@ public class RecommendationEngineService {
       instance.fire();
     }
 
-    // 3. 적격 후보 필터링 및 정렬
     return candidates.stream()
         .filter(Objects::nonNull)
         .filter(CourseCandidate::isEligible)
