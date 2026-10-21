@@ -73,7 +73,7 @@ public class PopularityCalculatorService {
   }
 
   /**
-   * 정상 집계 데이터가 전혀 없을 때(배치 실패 초기 대응 P14) 공개일·최초 노출일 내림차순 및 ID 오름차순으로 대체 목록을 반환합니다.
+   * 정상 집계 데이터가 전혀 없을 때 공개일·최초 노출일 내림차순 및 ID 오름차순으로 대체 목록을 반환합니다.
    *
    * @param targetType 대상 유형(COURSE 또는 PLACE, null 불가)
    * @param candidates 후보 목록

@@ -147,7 +147,7 @@ class PopularityCalculatorServiceTest {
   }
 
   @Test
-  @DisplayName("정상 집계가 없을 때 대체 목록(P14)은 공개일/최초 노출일 내림차순과 ID 오름차순으로 정렬한다")
+  @DisplayName("정상 집계가 없을 때 대체 목록은 공개일/최초 노출일 내림차순과 ID 오름차순으로 정렬한다")
   void shouldProvideFallbackOrderWhenNoNormalAggregationExists() {
     // given
     PopularityCandidate olderButHigherScore =
