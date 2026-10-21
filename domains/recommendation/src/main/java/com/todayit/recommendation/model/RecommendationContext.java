@@ -1,6 +1,7 @@
 package com.todayit.recommendation.model;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -34,7 +35,7 @@ public class RecommendationContext {
     this.selectedConcepts =
         selectedConcepts == null
             ? Collections.emptySet()
-            : Collections.unmodifiableSet(selectedConcepts);
+            : Collections.unmodifiableSet(new HashSet<>(selectedConcepts));
     this.hasHistory = hasHistory;
   }
 
