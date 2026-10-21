@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -60,7 +61,9 @@ public class CourseCandidate {
     this.totalPlaceCount = Math.max(0, totalPlaceCount);
     this.matchingDongPlaceCount = Math.max(0, matchingDongPlaceCount);
     this.concepts =
-        concepts == null ? Collections.emptySet() : Collections.unmodifiableSet(concepts);
+        concepts == null
+            ? Collections.emptySet()
+            : Collections.unmodifiableSet(new HashSet<>(concepts));
     this.popularityRawScore = Math.max(0.0, popularityRawScore);
     this.publishedAt = publishedAt;
 
