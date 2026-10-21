@@ -25,13 +25,11 @@ class RecommendationEngineServiceTest {
             "member-1", true, "1111051500", Set.of("HEALING", "NATURE"), true);
 
     Instant publishedAt = Instant.parse("2026-09-20T00:00:00Z");
-    // totalPlaceCount=4, matchingDongPlaceCount=3 -> R = 0.75
     CourseCandidate candidate =
         new CourseCandidate(
             "course-1", true, false, 4, 3, Set.of("HEALING", "NATURE"), 50.0, publishedAt);
-    candidate.setHistoryScore(0.6); // H = 0.6
+    candidate.setHistoryScore(0.6);
 
-    // max 인기 점수가 100.0인 다른 후보를 두어 candidate의 P를 50.0 / 100.0 = 0.5로 설정
     CourseCandidate benchmarkCandidate =
         new CourseCandidate("course-max", true, false, 2, 2, Set.of("HEALING"), 100.0, publishedAt);
 
@@ -53,19 +51,18 @@ class RecommendationEngineServiceTest {
   @Test
   @DisplayName("선호지역(R)이 누락되면 기본점수(B) 50%와 개인활동(H) 50%로 재정규화된다")
   void shouldRenormalizeWhenRegionIsMissing() {
-    // given: 선호지역 동 코드가 null
+    // given
     RecommendationContext context =
         new RecommendationContext("member-1", true, null, Set.of("CAFE"), true);
 
     CourseCandidate candidate =
         new CourseCandidate("course-1", true, false, 3, 0, Set.of("CAFE"), 100.0, Instant.now());
-    candidate.setHistoryScore(0.8); // H = 0.8
-    // C = 1.0, P = 1.0 -> B = 0.8*1.0 + 0.2*1.0 = 1.0
+    candidate.setHistoryScore(0.8);
 
     // when
     List<CourseCandidate> ranked = service.evaluateAndRank(context, List.of(candidate));
 
-    // then: FinalScore = 100 * (0.5 * 1.0 + 0.5 * 0.8) = 90.0점
+    // then
     assertEquals(1, ranked.size());
     assertEquals(90.0, ranked.get(0).getFinalScore(), 0.001);
   }
@@ -73,7 +70,7 @@ class RecommendationEngineServiceTest {
   @Test
   @DisplayName("개인화 동의를 철회한 경우 추천을 중단하고 인기 원점수 기준으로 대체 전환된다")
   void shouldFallbackToPopularWhenConsentRevoked() {
-    // given: personalizedConsent = false
+    // given
     RecommendationContext context =
         new RecommendationContext("member-1", false, "1111051500", Set.of("CAFE"), true);
 
