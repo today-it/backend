@@ -214,7 +214,7 @@ services:
       - monitoring
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
     logging:
       driver: json-file
       options:
