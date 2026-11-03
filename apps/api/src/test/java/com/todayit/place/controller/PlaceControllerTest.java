@@ -202,6 +202,21 @@ class PlaceControllerTest {
   }
 
   @Test
+  @DisplayName("중복된 시도 코드가 전달되면 400 오류를 반환한다")
+  void rejectsDuplicateSidoCode() throws Exception {
+    // When & Then
+    mockMvc
+        .perform(
+            get("/api/v1/places")
+                .param(
+                    "regions",
+                    "[{\"sidoCode\":\"11\",\"sigunguCodes\":[]},{\"sidoCode\":\"11\",\"sigunguCodes\":[\"110\"]}]"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_REGION_PATH"));
+    verifyNoInteractions(placeQueryService);
+  }
+
+  @Test
   @DisplayName("인증된 회원의 장소 목록에 좋아요 여부를 반환한다")
   void returnsAuthenticatedMemberLikesInList() throws Exception {
     // Given

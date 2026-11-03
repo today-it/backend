@@ -167,23 +167,25 @@ public class PlaceController implements PlaceApiDocs {
         throw new InvalidRegionPathException();
       }
 
+      if (sigunguBySido.containsKey(request.sidoCode())) {
+        throw new InvalidRegionPathException();
+      }
+
       List<String> sigunguCodes = request.sigunguCodes();
+      Set<String> set = new LinkedHashSet<>();
       if (sigunguCodes != null) {
         for (String sigunguCode : sigunguCodes) {
           if (sigunguCode == null || !sigunguCode.matches("^[0-9]{3}$")) {
             throw new InvalidRegionPathException();
           }
+          set.add(sigunguCode);
+        }
+        if (set.size() > MAX_SIGUNGU_COUNT_PER_SIDO) {
+          throw new ExceededSigunguLimitException();
         }
       }
 
-      Set<String> set =
-          sigunguBySido.computeIfAbsent(request.sidoCode(), k -> new LinkedHashSet<>());
-      if (sigunguCodes != null) {
-        set.addAll(sigunguCodes);
-      }
-      if (set.size() > MAX_SIGUNGU_COUNT_PER_SIDO) {
-        throw new ExceededSigunguLimitException();
-      }
+      sigunguBySido.put(request.sidoCode(), set);
     }
 
     return sigunguBySido.entrySet().stream()
