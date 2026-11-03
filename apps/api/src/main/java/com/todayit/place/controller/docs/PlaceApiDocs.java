@@ -433,7 +433,8 @@ public interface PlaceApiDocs {
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                 examples =
                     @ExampleObject(
-                        value = "{\"success\":true,\"data\":{\"placeId\":1,\"scrapped\":true}}"))),
+                        value =
+                            "{\"success\":true,\"data\":{\"placeId\":1,\"scrapped\":true,\"scrapCount\":1}}"))),
     @ApiResponse(
         responseCode = "400",
         description = "이미 스크랩된 장소",
@@ -503,7 +504,8 @@ public interface PlaceApiDocs {
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                 examples =
                     @ExampleObject(
-                        value = "{\"success\":true,\"data\":{\"placeId\":1,\"scrapped\":false}}"))),
+                        value =
+                            "{\"success\":true,\"data\":{\"placeId\":1,\"scrapped\":false,\"scrapCount\":0}}"))),
     @ApiResponse(
         responseCode = "401",
         description = "인증 실패",
@@ -562,7 +564,8 @@ public interface PlaceApiDocs {
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
                 examples =
                     @ExampleObject(
-                        value = "{\"success\":true,\"data\":{\"placeId\":1,\"liked\":true}}"))),
+                        value =
+                            "{\"success\":true,\"data\":{\"placeId\":1,\"liked\":true,\"likeCount\":1}}"))),
     @ApiResponse(
         responseCode = "400",
         description = "이미 좋아요를 누른 장소",
