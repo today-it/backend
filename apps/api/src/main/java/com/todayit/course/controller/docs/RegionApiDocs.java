@@ -3,7 +3,6 @@ package com.todayit.course.controller.docs;
 import com.todayit.common.response.CommonResponse;
 import com.todayit.course.dto.response.RegionResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,7 +32,7 @@ public interface RegionApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                array = @ArraySchema(schema = @Schema(implementation = RegionResponse.class)),
+                schema = @Schema(implementation = CommonResponse.class),
                 examples =
                     @ExampleObject(
                         name = "성공 예시",
