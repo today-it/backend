@@ -1,6 +1,7 @@
 package com.todayit.course.controller.docs;
 
 import com.todayit.common.response.CommonResponse;
+import com.todayit.common.response.ErrorResponse;
 import com.todayit.course.dto.response.RegionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -71,7 +72,18 @@ public interface RegionApiDocs {
                                 }
                               ]
                             }
-                            """)))
+                            """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
   })
   ResponseEntity<CommonResponse<List<RegionResponse>>> getRegions();
 }
