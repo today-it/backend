@@ -12,13 +12,23 @@ import java.util.List;
  */
 @Schema(description = "장소 지역 필터 조건")
 public record RegionFilterRequest(
-    @Schema(description = "시·도 코드 2자리입니다.", example = "11", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "시·도 코드 2자리입니다.",
+            example = "11",
+            requiredMode = Schema.RequiredMode.REQUIRED)
         String sidoCode,
     @Schema(
-            description = "시·군·구 코드 3자리 목록입니다. 시도당 최대 3개까지 선택할 수 있으며, 빈 배열이거나 생략하면 해당 시도 전체를 조회합니다.",
+            description =
+                "시·군·구 코드 3자리 목록입니다. 시도당 최대 3개까지 선택할 수 있으며, 빈 배열이거나 생략하면 해당 시도 전체를 조회합니다.",
             example = "[\"680\", \"650\"]")
         List<String> sigunguCodes) {
 
+  /**
+   * 시·군·구 코드 목록이 null인 경우 빈 불변 리스트로 초기화합니다.
+   *
+   * @param sidoCode 시·도 코드 2자리
+   * @param sigunguCodes 시·군·구 코드 3자리 목록
+   */
   public RegionFilterRequest {
     if (sigunguCodes == null) {
       sigunguCodes = List.of();

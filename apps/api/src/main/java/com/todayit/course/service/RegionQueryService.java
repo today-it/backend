@@ -1,11 +1,18 @@
 package com.todayit.course.service;
 
+import com.todayit.course.entity.Region;
+import com.todayit.course.entity.Region.RegionSnapshot;
 import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.repository.RegionRepository;
 import com.todayit.course.service.model.RegionFilter;
+import com.todayit.course.service.model.RegionResult;
+import com.todayit.course.service.model.SigunguResult;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +29,37 @@ public class RegionQueryService implements RegionPlaceQueryService {
    */
   public RegionQueryService(RegionRepository regionRepository) {
     this.regionRepository = regionRepository;
+  }
+
+  /**
+   * 전체 행정 지역을 시·도 및 하위 시·군·구 계층 구조로 조회합니다.
+   *
+   * @return 시·도별 시·군·구 계층 구조 목록
+   */
+  @Transactional(readOnly = true)
+  public List<RegionResult> findAllRegions() {
+    List<RegionSnapshot> snapshots =
+        regionRepository.findAllByOrderBySidoCodeAscSigunguCodeAsc().stream()
+            .map(Region::getSnapshot)
+            .toList();
+
+    Map<String, List<RegionSnapshot>> groupedBySido =
+        snapshots.stream()
+            .collect(
+                Collectors.groupingBy(
+                    RegionSnapshot::sidoCode, LinkedHashMap::new, Collectors.toList()));
+
+    return groupedBySido.values().stream()
+        .map(
+            regionList -> {
+              RegionSnapshot first = regionList.get(0);
+              List<SigunguResult> sigungus =
+                  regionList.stream()
+                      .map(r -> new SigunguResult(r.sigunguCode(), r.sigunguName()))
+                      .toList();
+              return new RegionResult(first.sidoCode(), first.sidoName(), sigungus);
+            })
+        .toList();
   }
 
   /**

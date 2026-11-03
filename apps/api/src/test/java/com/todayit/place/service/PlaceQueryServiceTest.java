@@ -2,7 +2,6 @@ package com.todayit.place.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -104,8 +103,7 @@ class PlaceQueryServiceTest {
   void findsPlacesWithoutCategories() {
     // Given
     PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-    when(placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, pageable))
+    when(placeRepository.findPlaces(List.of(0), false, List.of(Category.values()), false, pageable))
         .thenReturn(Page.empty(pageable));
     PlaceQueryService placeQueryService =
         new PlaceQueryService(
@@ -142,8 +140,7 @@ class PlaceQueryServiceTest {
                 Category.RESTAURANT,
                 15,
                 List.of("https://placehold.co/1200x800?text=Restaurant")));
-    when(placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, pageable))
+    when(placeRepository.findPlaces(List.of(0), false, List.of(Category.values()), false, pageable))
         .thenReturn(new PageImpl<>(List.of(place), pageable, 1));
     when(placeImageRepository.findByPlacePlaceIdInOrderByPlacePlaceIdAscCreatedAtAsc(List.of(1)))
         .thenReturn(List.of());
@@ -182,8 +179,7 @@ class PlaceQueryServiceTest {
                 Category.RESTAURANT,
                 15,
                 List.of("https://placehold.co/1200x800?text=Restaurant")));
-    when(placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, pageable))
+    when(placeRepository.findPlaces(List.of(0), false, List.of(Category.values()), false, pageable))
         .thenReturn(new PageImpl<>(List.of(place), pageable, 1));
     when(placeImageRepository.findByPlacePlaceIdInOrderByPlacePlaceIdAscCreatedAtAsc(List.of(1)))
         .thenReturn(List.of());
@@ -211,8 +207,7 @@ class PlaceQueryServiceTest {
   void doesNotQueryLikesWhenPlacesEmpty() {
     // Given
     PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-    when(placeRepository.findPlaces(
-            List.of(0), false, List.of(Category.values()), false, pageable))
+    when(placeRepository.findPlaces(List.of(0), false, List.of(Category.values()), false, pageable))
         .thenReturn(Page.empty(pageable));
     PlaceQueryService placeQueryService =
         new PlaceQueryService(
@@ -236,7 +231,8 @@ class PlaceQueryServiceTest {
   void findsPlacesWithFilters() {
     // Given
     PageRequest pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-    when(regionPlaceQueryService.findRegionIds(List.of(new RegionFilter("11", List.of("230"))))).thenReturn(List.of(10));
+    when(regionPlaceQueryService.findRegionIds(List.of(new RegionFilter("11", List.of("230")))))
+        .thenReturn(List.of(10));
     when(placeRepository.findPlaces(
             List.of(10), true, List.of(Category.RESTAURANT, Category.CAFE_DESSERT), true, pageable))
         .thenReturn(Page.empty(pageable));

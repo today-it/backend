@@ -88,8 +88,7 @@ public class PlaceQueryService implements PlaceScrapQueryService {
         sidoCode == null && sigunguCode == null
             ? null
             : List.of(
-                new RegionFilter(
-                    sidoCode, sigunguCode == null ? List.of() : List.of(sigunguCode)));
+                new RegionFilter(sidoCode, sigunguCode == null ? List.of() : List.of(sigunguCode)));
     return findPlaces(regions, categories, page, size, sort, memberId);
   }
 

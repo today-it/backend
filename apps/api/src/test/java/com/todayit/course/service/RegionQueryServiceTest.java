@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.todayit.course.entity.Region;
 import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.repository.RegionRepository;
 import com.todayit.course.service.model.RegionFilter;
+import com.todayit.course.service.model.RegionResult;
+import com.todayit.course.service.model.SigunguResult;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,50 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RegionQueryServiceTest {
   @Mock private RegionRepository regionRepository;
+
+  @Test
+  @DisplayName("전체 지역 엔티티 목록을 시도 및 하위 시군구 계층 구조로 변환하여 조회한다")
+  void findsAllRegionsHierarchically() {
+    // Given
+    List<Region> regions =
+        List.of(
+            new Region(1, "11", "110", "서울특별시", "종로구"),
+            new Region(2, "11", "680", "서울특별시", "강남구"),
+            new Region(3, "26", "110", "부산광역시", "중구"));
+    when(regionRepository.findAllByOrderBySidoCodeAscSigunguCodeAsc()).thenReturn(regions);
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    // When
+    List<RegionResult> result = service.findAllRegions();
+
+    // Then
+    assertThat(result).hasSize(2);
+
+    RegionResult seoul = result.get(0);
+    assertThat(seoul.sidoCode()).isEqualTo("11");
+    assertThat(seoul.sidoName()).isEqualTo("서울특별시");
+    assertThat(seoul.sigungus())
+        .containsExactly(new SigunguResult("110", "종로구"), new SigunguResult("680", "강남구"));
+
+    RegionResult busan = result.get(1);
+    assertThat(busan.sidoCode()).isEqualTo("26");
+    assertThat(busan.sidoName()).isEqualTo("부산광역시");
+    assertThat(busan.sigungus()).containsExactly(new SigunguResult("110", "중구"));
+  }
+
+  @Test
+  @DisplayName("지역 엔티티 데이터가 비어있으면 빈 목록을 반환한다")
+  void returnsEmptyListWhenNoRegions() {
+    // Given
+    when(regionRepository.findAllByOrderBySidoCodeAscSigunguCodeAsc()).thenReturn(List.of());
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    // When
+    List<RegionResult> result = service.findAllRegions();
+
+    // Then
+    assertThat(result).isEmpty();
+  }
 
   @ParameterizedTest
   @CsvSource({"41,", ",115", "41,115", ","})
@@ -71,9 +118,7 @@ class RegionQueryServiceTest {
 
     RegionQueryService service = new RegionQueryService(regionRepository);
     List<RegionFilter> filters =
-        List.of(
-            new RegionFilter("41", List.of()),
-            new RegionFilter("11", List.of("680", "650")));
+        List.of(new RegionFilter("41", List.of()), new RegionFilter("11", List.of("680", "650")));
 
     // When
     List<Integer> result = service.findRegionIds(filters);
@@ -92,8 +137,7 @@ class RegionQueryServiceTest {
     assertThatThrownBy(() -> service.findRegionIds(List.of(new RegionFilter("411", List.of()))))
         .isInstanceOf(InvalidRegionPathException.class);
 
-    assertThatThrownBy(
-            () -> service.findRegionIds(List.of(new RegionFilter("41", List.of("11")))))
+    assertThatThrownBy(() -> service.findRegionIds(List.of(new RegionFilter("41", List.of("11")))))
         .isInstanceOf(InvalidRegionPathException.class);
     verifyNoInteractions(regionRepository);
   }

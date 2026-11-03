@@ -44,4 +44,11 @@ public interface RegionRepository extends JpaRepository<Region, Integer> {
           + "where region.sidoCode = :sidoCode and region.sigunguCode in :sigunguCodes")
   List<Integer> findIdsBySidoCodeAndSigunguCodes(
       @Param("sidoCode") String sidoCode, @Param("sigunguCodes") List<String> sigunguCodes);
+
+  /**
+   * 전체 행정 지역 목록을 시·도 코드 및 시·군·구 코드 오름차순으로 조회합니다.
+   *
+   * @return 정렬된 전체 행정 지역 엔티티 목록
+   */
+  List<Region> findAllByOrderBySidoCodeAscSigunguCodeAsc();
 }

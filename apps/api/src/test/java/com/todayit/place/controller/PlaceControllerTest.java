@@ -13,7 +13,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.common.pagination.PageResult;
 import com.todayit.course.service.CoursePlaceQueryService;
-import com.todayit.course.service.model.CourseSort;
 import com.todayit.course.service.model.RegionFilter;
 import com.todayit.place.entity.Category;
 import com.todayit.place.exception.PlaceNotFoundException;
@@ -107,7 +106,12 @@ class PlaceControllerTest {
   void forwardsSingleSidoWithSigungus() throws Exception {
     // Given
     when(placeQueryService.findPlaces(
-            List.of(new RegionFilter("41", List.of("110", "120"))), null, 0, 20, PlaceSort.LATEST, null))
+            List.of(new RegionFilter("41", List.of("110", "120"))),
+            null,
+            0,
+            20,
+            PlaceSort.LATEST,
+            null))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0));
 
     // When & Then
@@ -118,7 +122,12 @@ class PlaceControllerTest {
         .andExpect(status().isOk());
     verify(placeQueryService)
         .findPlaces(
-            List.of(new RegionFilter("41", List.of("110", "120"))), null, 0, 20, PlaceSort.LATEST, null);
+            List.of(new RegionFilter("41", List.of("110", "120"))),
+            null,
+            0,
+            20,
+            PlaceSort.LATEST,
+            null);
   }
 
   @Test
@@ -126,9 +135,7 @@ class PlaceControllerTest {
   void forwardsMultipleSidos() throws Exception {
     // Given
     List<RegionFilter> filters =
-        List.of(
-            new RegionFilter("11", List.of("680")),
-            new RegionFilter("41", List.of()));
+        List.of(new RegionFilter("11", List.of("680")), new RegionFilter("41", List.of()));
     when(placeQueryService.findPlaces(filters, null, 0, 20, PlaceSort.LATEST, null))
         .thenReturn(new PageResult<>(List.of(), 0, 20, 0));
 
@@ -198,7 +205,8 @@ class PlaceControllerTest {
             0,
             List.of(),
             true);
-    when(placeQueryService.findPlaces((List<RegionFilter>) null, null, 0, 20, PlaceSort.LATEST, "member-1"))
+    when(placeQueryService.findPlaces(
+            (List<RegionFilter>) null, null, 0, 20, PlaceSort.LATEST, "member-1"))
         .thenReturn(new PageResult<>(List.of(place), 0, 20, 1));
 
     // When & Then
@@ -208,7 +216,8 @@ class PlaceControllerTest {
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.content[0].liked").value(true));
-    verify(placeQueryService).findPlaces((List<RegionFilter>) null, null, 0, 20, PlaceSort.LATEST, "member-1");
+    verify(placeQueryService)
+        .findPlaces((List<RegionFilter>) null, null, 0, 20, PlaceSort.LATEST, "member-1");
   }
 
   @Test
@@ -413,10 +422,7 @@ class PlaceControllerTest {
     when(placeQueryService.findPlaceImages(1, 0, 5))
         .thenReturn(
             new PageResult<>(
-                List.of(new PlaceImageResult(10, "https://example.com/place-image.jpg")),
-                0,
-                5,
-                1));
+                List.of(new PlaceImageResult(10, "https://example.com/place-image.jpg")), 0, 5, 1));
 
     // When
     mockMvc

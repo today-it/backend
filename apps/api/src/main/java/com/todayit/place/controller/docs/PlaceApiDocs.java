@@ -160,8 +160,10 @@ public interface PlaceApiDocs {
   })
   ResponseEntity<CommonResponse<PageResponse<PlaceFilterResponse>>> findPlaces(
       @Parameter(
-              description = "지역 필터 JSON 배열 문자열입니다. 시도당 시군구 코드는 최대 3개까지 지정할 수 있으며, 빈 배열이거나 생략하면 해당 시도 전체를 조회합니다.",
-              example = "[{\"sidoCode\":\"11\",\"sigunguCodes\":[\"680\",\"650\"]},{\"sidoCode\":\"41\",\"sigunguCodes\":[]}]")
+              description =
+                  "지역 필터 JSON 배열 문자열입니다. 시도당 시군구 코드는 최대 3개까지 지정할 수 있으며, 빈 배열이거나 생략하면 해당 시도 전체를 조회합니다.",
+              example =
+                  "[{\"sidoCode\":\"11\",\"sigunguCodes\":[\"680\",\"650\"]},{\"sidoCode\":\"41\",\"sigunguCodes\":[]}]")
           String regions,
       @Parameter(
               description =
