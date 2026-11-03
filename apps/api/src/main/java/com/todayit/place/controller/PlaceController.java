@@ -1,6 +1,7 @@
 package com.todayit.place.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.todayit.common.pagination.PageResponse;
 import com.todayit.common.pagination.PaginationValidator;
@@ -77,7 +78,7 @@ public class PlaceController implements PlaceApiDocs {
     this.placeQueryService = placeQueryService;
     this.placeCommandService = placeCommandService;
     this.coursePlaceQueryService = coursePlaceQueryService;
-    this.objectMapper = new ObjectMapper();
+    this.objectMapper = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
   }
 
   /**

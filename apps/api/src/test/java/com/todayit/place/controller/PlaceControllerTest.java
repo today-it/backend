@@ -217,6 +217,19 @@ class PlaceControllerTest {
   }
 
   @Test
+  @DisplayName("후행 데이터가 있는 잘못된 형식의 regions 파라미터는 400 오류를 반환한다")
+  void rejectsTrailingDataInRegionsParam() throws Exception {
+    // When & Then
+    mockMvc
+        .perform(
+            get("/api/v1/places")
+                .param("regions", "[{\"sidoCode\":\"11\"}] [{\"sidoCode\":\"26\"}]"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_REGION_PATH"));
+    verifyNoInteractions(placeQueryService);
+  }
+
+  @Test
   @DisplayName("인증된 회원의 장소 목록에 좋아요 여부를 반환한다")
   void returnsAuthenticatedMemberLikesInList() throws Exception {
     // Given
