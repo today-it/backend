@@ -119,12 +119,19 @@ public class RegionQueryService implements RegionPlaceQueryService {
           }
         }
         List<String> distinctSigunguCodes = sigunguCodes.stream().distinct().toList();
-        List<Integer> ids =
-            regionRepository.findIdsBySidoCodeAndSigunguCodes(sidoCode, distinctSigunguCodes);
-        if (ids.size() != distinctSigunguCodes.size()) {
+        List<Region> matchedRegions =
+            regionRepository.findBySidoCodeAndSigunguCodeIn(sidoCode, distinctSigunguCodes);
+
+        Set<String> matchedSigunguCodes =
+            matchedRegions.stream()
+                .map(r -> r.getSnapshot().sigunguCode())
+                .collect(Collectors.toSet());
+
+        if (matchedSigunguCodes.size() != distinctSigunguCodes.size()) {
           throw new InvalidRegionPathException();
         }
-        allRegionIds.addAll(ids);
+
+        matchedRegions.forEach(r -> allRegionIds.add(r.getSnapshot().regionId()));
       }
     }
 

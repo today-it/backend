@@ -33,17 +33,13 @@ public interface RegionRepository extends JpaRepository<Region, Integer> {
   List<Integer> findIdsBySidoCode(@Param("sidoCode") String sidoCode);
 
   /**
-   * 시·도 코드 및 특정 시·군·구 코드들에 해당하는 지역 식별자를 조회합니다.
+   * 시·도 코드 및 특정 시·군·구 코드들에 해당하는 행정 지역 엔티티 목록을 조회합니다.
    *
    * @param sidoCode 시·도 코드
    * @param sigunguCodes 시·군·구 코드 목록
-   * @return 지역 식별자 목록
+   * @return 행정 지역 엔티티 목록
    */
-  @Query(
-      "select region.regionId from Region region "
-          + "where region.sidoCode = :sidoCode and region.sigunguCode in :sigunguCodes")
-  List<Integer> findIdsBySidoCodeAndSigunguCodes(
-      @Param("sidoCode") String sidoCode, @Param("sigunguCodes") List<String> sigunguCodes);
+  List<Region> findBySidoCodeAndSigunguCodeIn(String sidoCode, List<String> sigunguCodes);
 
   /**
    * 전체 행정 지역 목록을 시·도 코드 및 시·군·구 코드 오름차순으로 조회합니다.

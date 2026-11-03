@@ -113,8 +113,11 @@ class RegionQueryServiceTest {
   void findsRegionsByFilterList() {
     // Given
     when(regionRepository.findIdsBySidoCode("41")).thenReturn(List.of(1, 2));
-    when(regionRepository.findIdsBySidoCodeAndSigunguCodes("11", List.of("680", "650")))
-        .thenReturn(List.of(10, 11));
+    when(regionRepository.findBySidoCodeAndSigunguCodeIn("11", List.of("680", "650")))
+        .thenReturn(
+            List.of(
+                new Region(10, "11", "680", "서울특별시", "강남구"),
+                new Region(11, "11", "650", "서울특별시", "서초구")));
 
     RegionQueryService service = new RegionQueryService(regionRepository);
     List<RegionFilter> filters =
@@ -125,6 +128,26 @@ class RegionQueryServiceTest {
 
     // Then
     assertThat(result).containsExactly(1, 2, 10, 11);
+  }
+
+  @Test
+  @DisplayName("동일 시군구 코드에 여러 행이 존재하더라도 고유 코드 일치 시 모든 식별자를 조회한다")
+  void findsRegionsEvenWithMultipleRowsForSameSigungu() {
+    // Given
+    when(regionRepository.findBySidoCodeAndSigunguCodeIn("11", List.of("680")))
+        .thenReturn(
+            List.of(
+                new Region(10, "11", "680", "서울특별시", "강남구"),
+                new Region(11, "11", "680", "서울특별시", "강남구")));
+
+    RegionQueryService service = new RegionQueryService(regionRepository);
+    List<RegionFilter> filters = List.of(new RegionFilter("11", List.of("680")));
+
+    // When
+    List<Integer> result = service.findRegionIds(filters);
+
+    // Then
+    assertThat(result).containsExactly(10, 11);
   }
 
   @Test
@@ -158,7 +181,7 @@ class RegionQueryServiceTest {
   @DisplayName("지역 필터 목록에 존재하지 않는 시군구 코드가 포함되면 예외를 던진다")
   void rejectsFilterWithUnknownSigungu() {
     // Given
-    when(regionRepository.findIdsBySidoCodeAndSigunguCodes("41", List.of("999")))
+    when(regionRepository.findBySidoCodeAndSigunguCodeIn("41", List.of("999")))
         .thenReturn(List.of());
     RegionQueryService service = new RegionQueryService(regionRepository);
 
