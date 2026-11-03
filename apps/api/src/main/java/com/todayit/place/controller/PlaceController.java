@@ -140,8 +140,11 @@ public class PlaceController implements PlaceApiDocs {
    * @throws ExceededSigunguLimitException 시도당 시군구 코드가 3개를 초과할 때
    */
   private List<RegionFilter> parseRegions(String regionsJson) {
-    if (regionsJson == null || regionsJson.isBlank()) {
+    if (regionsJson == null) {
       return null;
+    }
+    if (regionsJson.isBlank()) {
+      throw new InvalidRegionPathException();
     }
 
     List<RegionFilterRequest> requests;
