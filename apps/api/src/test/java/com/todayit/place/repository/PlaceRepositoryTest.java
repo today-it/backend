@@ -336,9 +336,13 @@ class PlaceRepositoryTest {
   void countsRepeatedCharactersUpToKeywordFrequency() {
     // Given
     insertPlace("어어", "RESTAURANT");
-    insertPlace("어어어", "RESTAURANT");
-    insertPlace("어어 카페", "RESTAURANT");
+    Integer repeatedPlaceId = insertPlace("어어어", "RESTAURANT");
+    Integer cafePlaceId = insertPlace("어어 카페", "RESTAURANT");
     insertPlace("어", "RESTAURANT");
+    jdbcTemplate.update(
+        "UPDATE place SET created_at = TIMESTAMP '2026-01-01 12:00:00' WHERE place_id IN (?, ?)",
+        repeatedPlaceId,
+        cafePlaceId);
 
     // When
     Page<Place> result = placeRepository.searchByName("어어", PageRequest.of(0, 10));
@@ -348,6 +352,30 @@ class PlaceRepositoryTest {
     assertThat(result.getContent())
         .extracting(place -> place.getSnapshot().name())
         .containsExactly("어어", "어어 카페", "어어어", "어");
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("일치 점수가 같으면 장소 ID보다 생성 시각 내림차순을 먼저 적용한다")
+  void prioritizesCreatedAtOverPlaceIdForEqualScores() {
+    // Given
+    Integer newerPlaceId = insertPlace("어어 카페", "RESTAURANT");
+    Integer olderPlaceId = insertPlace("어어어", "RESTAURANT");
+    jdbcTemplate.update(
+        "UPDATE place SET created_at = TIMESTAMP '2026-01-02 12:00:00' WHERE place_id = ?",
+        newerPlaceId);
+    jdbcTemplate.update(
+        "UPDATE place SET created_at = TIMESTAMP '2026-01-01 12:00:00' WHERE place_id = ?",
+        olderPlaceId);
+
+    // When
+    Page<Place> result = placeRepository.searchByName("어어", PageRequest.of(0, 10));
+
+    // Then
+    assertThat(newerPlaceId).isLessThan(olderPlaceId);
+    assertThat(result.getContent())
+        .extracting(place -> place.getSnapshot().name())
+        .containsExactly("어어 카페", "어어어");
   }
 
   @ParameterizedTest
