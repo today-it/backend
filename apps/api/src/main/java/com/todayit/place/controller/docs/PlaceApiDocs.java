@@ -111,7 +111,7 @@ public interface PlaceApiDocs {
                 examples =
                     @ExampleObject(
                         value =
-                            "{\"success\":true,\"data\":{\"placeId\":1,\"name\":\"오늘 카페\",\"category\":\"CAFE_DESSERT\",\"address\":\"서울특별시 종로구 종로 1\",\"location\":{\"latitude\":37.57,\"longitude\":126.985},\"description\":\"조용한 분위기의 카페입니다.\",\"openingHours\":[{\"openDate\":\"2026-10-16T00:00:00\",\"startAt\":\"2026-10-16T09:00:00\",\"endAt\":\"2026-10-16T18:00:00\",\"breakStartAt\":\"2026-10-16T12:00:00\",\"breakEndAt\":\"2026-10-16T13:00:00\"}],\"images\":[\"https://example.com/images/place-1.jpg\"],\"averageStayMinutes\":60,\"liked\":true,\"scrapped\":false}}"))),
+                            "{\"success\":true,\"data\":{\"placeId\":1,\"name\":\"오늘 카페\",\"category\":\"CAFE_DESSERT\",\"address\":\"서울특별시 종로구 종로 1\",\"location\":{\"latitude\":37.57,\"longitude\":126.985},\"description\":\"조용한 분위기의 카페입니다.\",\"openingHours\":[{\"openDate\":\"2026-10-16T00:00:00\",\"startAt\":\"2026-10-16T09:00:00\",\"endAt\":\"2026-10-16T18:00:00\",\"breakStartAt\":\"2026-10-16T12:00:00\",\"breakEndAt\":\"2026-10-16T13:00:00\"}],\"images\":[\"https://example.com/images/place-1.jpg\"],\"averageStayMinutes\":60,\"liked\":true,\"scrapped\":false,\"visitorInfo\":{\"PARKING\":\"주차 가능\",\"PET_ACCESS\":\"반려동물 동반 불가\"}}}"))),
     @ApiResponse(
         responseCode = "400",
         description = "잘못된 장소 식별자",
