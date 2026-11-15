@@ -52,14 +52,34 @@ public interface PlaceApiDocs {
     @ApiResponse(
         responseCode = "400",
         description = "검색어 누락 또는 잘못된 페이지 요청",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "검색어 누락 또는 요청 형식 오류",
+                      value =
+                          "{\"success\":false,\"code\":\"INVALID_REQUEST\",\"message\":\"요청값이 올바르지 않습니다.\"}"),
+                  @ExampleObject(
+                      name = "잘못된 페이지 번호 또는 크기",
+                      value =
+                          "{\"success\":false,\"code\":\"INVALID_PAGINATION\",\"message\":\"페이지 요청값이 올바르지 않습니다.\"}")
+                })),
     @ApiResponse(
         responseCode = "500",
         description = "서버 내부 오류",
-        content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
   })
   ResponseEntity<CommonResponse<PageResponse<PlaceFilterResponse>>> searchPlaces(
-      @Parameter(description = "가게 이름 검색어입니다.", example = "강남", required = true) String keyword,
+      @Parameter(description = "가게 이름 검색어입니다.", example = "어니언 성수", required = true) String keyword,
       @Parameter(
               description = "페이지 번호입니다. 0부터 시작합니다.",
               example = "0",
