@@ -2,6 +2,7 @@ package com.todayit.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,7 @@ import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
@@ -148,5 +150,19 @@ class CourseFacadeTest {
     // when & then
     assertThrows(CourseNotFoundException.class, () -> facade.getCourseDetail(1, "member-2"));
     verifyNoInteractions(placeCourseQueryService);
+  }
+
+  @Test
+  @DisplayName("코스 장소 순서 변경을 정상적으로 위임한다")
+  void updatesCoursePlaceOrdersSuccessfully() {
+    // given
+    UpdateCoursePlaceOrdersCommand command =
+        new UpdateCoursePlaceOrdersCommand(1, List.of(3, 1, 2));
+
+    // when
+    facade.updateCoursePlaceOrders("member-1", command);
+
+    // then
+    verify(courses).reorderPlaces("member-1", command);
   }
 }

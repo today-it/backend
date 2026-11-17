@@ -7,9 +7,11 @@ import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import java.time.LocalDateTime;
@@ -37,8 +39,8 @@ public class CourseCommandService {
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 검증된 생성 조건
-   * @return 생성한 DRAFT 정보
-   * @throws CourseException 지원하지 않는 콘셉트를 지정했을 때
+   * @return 생성 결과
+   * @throws CourseException 지원하지 않는 콘셉트가 포함된 경우
    */
   @Transactional
   public CreateCourseResult createCourse(String memberId, CreateCourseCommand command) {
@@ -65,6 +67,7 @@ public class CourseCommandService {
    * @param command 코스 장소 추가 조건
    * @return 추가 결과
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws MaxPlaceDuplicationExceededException 동일한 장소가 이미 최대 허용 횟수(2개)만큼 존재하는 경우
    */
   @Transactional
   public AddCoursePlaceResult addPlace(String memberId, AddCoursePlaceCommand command) {
@@ -74,6 +77,9 @@ public class CourseCommandService {
         || course.getDeletedAt() != null
         || course.getStatus() == CourseStatus.DELETED) {
       throw new CourseNotFoundException();
+    }
+    if (!course.canAddPlace(command.placeId())) {
+      throw new MaxPlaceDuplicationExceededException();
     }
     if (command.order() != null) {
       List<CoursePlace> shifted = course.shiftOrdersToNegative(command.order());
@@ -94,5 +100,27 @@ public class CourseCommandService {
                 .orElse(coursePlace)
             : coursePlace;
     return AddCoursePlaceResult.from(persistedPlace);
+  }
+
+  /**
+   * 코스 장소의 방문 순서를 일괄 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param command 순서 변경 조건
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   */
+  @Transactional
+  public void reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
+    Course course =
+        courseRepository.findById(command.courseId()).orElseThrow(CourseNotFoundException::new);
+    if (!course.isWriter(memberId)
+        || course.getDeletedAt() != null
+        || course.getStatus() == CourseStatus.DELETED) {
+      throw new CourseNotFoundException();
+    }
+    course.reorderPlaces(command.coursePlaceIds());
+    courseRepository.flush();
+    course.applyNewOrders(command.coursePlaceIds());
+    courseRepository.saveAndFlush(course);
   }
 }

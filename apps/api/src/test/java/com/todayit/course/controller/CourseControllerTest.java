@@ -2,10 +2,12 @@ package com.todayit.course.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,10 +19,13 @@ import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.InvalidCoursePlaceOrderException;
+import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
@@ -906,5 +911,177 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"))
         .andExpect(jsonPath("$.message").value("장소를 찾을 수 없습니다."));
+  }
+
+  @Test
+  @DisplayName("동일한 장소를 3회 이상 추가하려 하면 400과 MAX_PLACE_DUPLICATION_EXCEEDED를 반환한다")
+  void rejectsWhenPlaceDuplicationExceeded() throws Exception {
+    // given
+    when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
+        .thenThrow(new MaxPlaceDuplicationExceededException());
+    String request =
+        """
+        {
+          "placeId": 10,
+          "order": 3,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("MAX_PLACE_DUPLICATION_EXCEEDED"))
+        .andExpect(jsonPath("$.message").value("동일한 장소는 코스에 최대 2회까지만 추가할 수 있습니다."));
+  }
+
+  @Test
+  @DisplayName("코스 장소 순서 변경에 성공하면 200과 null data를 반환한다")
+  void updatesCoursePlaceOrdersSuccessfully() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "coursePlaceIds": [3, 1, 2]
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/places/order")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data").doesNotExist());
+    verify(courseFacade)
+        .updateCoursePlaceOrders(
+            "member-1", new UpdateCoursePlaceOrdersCommand(1, List.of(3, 1, 2)));
+  }
+
+  @Test
+  @DisplayName("순서 변경 요청 시 식별자 목록이 비어 있으면 400을 반환한다")
+  void rejectsEmptyCoursePlaceIdsOnReorder() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "coursePlaceIds": []
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/places/order")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_PLACE_ORDER"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("순서 변경 요청 시 중복된 식별자가 포함되면 400을 반환한다")
+  void rejectsDuplicateCoursePlaceIdsOnReorder() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "coursePlaceIds": [1, 1, 2]
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/places/order")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_PLACE_ORDER"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("순서 변경 시 코스를 찾을 수 없거나 작성자가 아니면 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnReorder() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException())
+        .when(courseFacade)
+        .updateCoursePlaceOrders(eq("member-1"), any(UpdateCoursePlaceOrdersCommand.class));
+    String request =
+        """
+        {
+          "coursePlaceIds": [3, 1, 2]
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/999/places/order")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("순서 변경 시 전달된 장소 목록이 코스 장소와 일치하지 않으면 400을 반환한다")
+  void returnsBadRequestWhenFacadeThrowsInvalidCoursePlaceOrderException() throws Exception {
+    // given
+    doThrow(new InvalidCoursePlaceOrderException())
+        .when(courseFacade)
+        .updateCoursePlaceOrders(eq("member-1"), any(UpdateCoursePlaceOrdersCommand.class));
+    String request =
+        """
+        {
+          "coursePlaceIds": [3, 1, 2]
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/places/order")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_PLACE_ORDER"));
   }
 }

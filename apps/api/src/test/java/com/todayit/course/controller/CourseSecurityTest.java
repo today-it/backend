@@ -1,6 +1,7 @@
 package com.todayit.course.controller;
 
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +51,24 @@ class CourseSecurityTest {
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses").contentType(MediaType.APPLICATION_JSON).content(request));
+
+    // then
+    result.andExpect(status().isUnauthorized());
+    verifyNoInteractions(facade);
+  }
+
+  @Test
+  @DisplayName("코스 장소 순서 변경은 비회원 요청을 거부한다")
+  void rejectsAnonymousPlaceReorder() throws Exception {
+    // given
+    String request = "{\"coursePlaceIds\":[1,2]}";
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/places/order")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
 
     // then
     result.andExpect(status().isUnauthorized());

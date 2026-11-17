@@ -7,6 +7,7 @@ import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.Theme;
+import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -157,5 +158,99 @@ class CourseCreationRepositoryTest {
     assertThat(savedPlace.getPlaceId()).isEqualTo(10);
     assertThat(savedPlace.getOrder()).isEqualTo(1);
     assertThat(savedPlace.getStayMinute()).isEqualTo(60);
+  }
+
+  @Test
+  @DisplayName("동일한 장소를 2회까지 추가하여 저장할 수 있다")
+  void persistsDuplicatePlacesUpToTwice() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "종로 데이트",
+            CourseTransport.WALKING,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    course = courses.saveAndFlush(course);
+
+    // when
+    course.addPlace(10, null, 60);
+    course.addPlace(10, null, 30);
+    Course savedCourse = courses.saveAndFlush(course);
+
+    // then
+    List<CoursePlace> savedPlaces = savedCourse.getCoursePlaces();
+    assertThat(savedPlaces).hasSize(2);
+    assertThat(savedPlaces.get(0).getPlaceId()).isEqualTo(10);
+    assertThat(savedPlaces.get(0).getOrder()).isEqualTo(1);
+    assertThat(savedPlaces.get(0).getCoursePlaceId()).isPositive();
+    assertThat(savedPlaces.get(1).getPlaceId()).isEqualTo(10);
+    assertThat(savedPlaces.get(1).getOrder()).isEqualTo(2);
+    assertThat(savedPlaces.get(1).getCoursePlaceId()).isPositive();
+    assertThat(savedPlaces.get(0).getCoursePlaceId())
+        .isNotEqualTo(savedPlaces.get(1).getCoursePlaceId());
+  }
+
+  @Test
+  @DisplayName("동일한 장소를 3회 추가하려 하면 MaxPlaceDuplicationExceededException이 발생한다")
+  void rejectsAddingSamePlaceThirdTime() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "종로 데이트",
+            CourseTransport.WALKING,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    Course savedCourse = courses.saveAndFlush(course);
+    savedCourse.addPlace(10, null, 60);
+    savedCourse.addPlace(10, null, 30);
+
+    // when & then
+    assertThrows(
+        MaxPlaceDuplicationExceededException.class, () -> savedCourse.addPlace(10, null, 45));
+  }
+
+  @Test
+  @DisplayName("코스 장소의 방문 순서를 변경하고 저장하면 DB 순서가 갱신된다")
+  void reordersCoursePlacesAndPersists() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "종로 데이트",
+            CourseTransport.WALKING,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    course.addPlace(10, null, 60);
+    course.addPlace(20, null, 30);
+    course.addPlace(30, null, 45);
+    course = courses.saveAndFlush(course);
+
+    int id1 = course.getCoursePlaces().get(0).getCoursePlaceId();
+    int id2 = course.getCoursePlaces().get(1).getCoursePlaceId();
+    int id3 = course.getCoursePlaces().get(2).getCoursePlaceId();
+
+    // when: [id3, id1, id2] 순서로 변경
+    course.reorderPlaces(List.of(id3, id1, id2));
+    courses.flush();
+    course.applyNewOrders(List.of(id3, id1, id2));
+    Course savedCourse = courses.saveAndFlush(course);
+
+    // then
+    Map<Integer, Integer> orderMap =
+        savedCourse.getCoursePlaces().stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    CoursePlace::getCoursePlaceId, CoursePlace::getOrder));
+    assertThat(orderMap.get(id3)).isEqualTo(1);
+    assertThat(orderMap.get(id1)).isEqualTo(2);
+    assertThat(orderMap.get(id2)).isEqualTo(3);
   }
 }

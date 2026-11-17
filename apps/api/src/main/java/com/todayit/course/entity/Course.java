@@ -1,5 +1,7 @@
 package com.todayit.course.entity;
 
+import com.todayit.course.exception.InvalidCoursePlaceOrderException;
+import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,12 +15,20 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** 회원이 만든 코스의 기본 정보와 상태를 나타냅니다. */
 @Entity
 @Table(name = "course")
 public class Course {
+
+  /** 한 코스 내 동일한 장소의 최대 중복 허용 개수입니다. */
+  public static final int MAX_PLACE_DUPLICATION_COUNT = 2;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -101,6 +111,7 @@ public class Course {
     course.transport = transport;
     course.startAt = startAt;
     course.endAt = endAt;
+    course.viewCount = 0;
     course.status = CourseStatus.DRAFT;
     course.visibility = CourseVisibility.PRIVATE;
     course.createdAt = createdAt;
@@ -181,36 +192,36 @@ public class Course {
   }
 
   /**
-   * 시작 시각을 반환합니다.
+   * 방문 시작 시각을 반환합니다.
    *
-   * @return 시작 시각
+   * @return 방문 시작 시각
    */
   public LocalDateTime getStartAt() {
     return startAt;
   }
 
   /**
-   * 종료 시각을 반환합니다.
+   * 방문 종료 시각을 반환합니다.
    *
-   * @return 종료 시각, 없으면 null
+   * @return 방문 종료 시각, 없으면 null
    */
   public LocalDateTime getEndAt() {
     return endAt;
   }
 
   /**
-   * 상태를 반환합니다.
+   * 코스 상태를 반환합니다.
    *
-   * @return 상태
+   * @return 코스 상태
    */
   public CourseStatus getStatus() {
     return status;
   }
 
   /**
-   * 공개 범위를 반환합니다.
+   * 공개 여부를 반환합니다.
    *
-   * @return 공개 범위
+   * @return 공개 여부
    */
   public CourseVisibility getVisibility() {
     return visibility;
@@ -226,9 +237,9 @@ public class Course {
   }
 
   /**
-   * 등록 일시를 반환합니다.
+   * 생성 일시를 반환합니다.
    *
-   * @return 등록 일시
+   * @return 생성 일시
    */
   public LocalDateTime getCreatedAt() {
     return createdAt;
@@ -289,6 +300,26 @@ public class Course {
   }
 
   /**
+   * 코스에 특정 장소가 추가 가능한지(중복 허용 개수 미만인지) 확인합니다.
+   *
+   * @param placeId 확인할 장소 식별자
+   * @return 추가 가능 여부
+   */
+  public boolean canAddPlace(int placeId) {
+    return getPlaceCount(placeId) < MAX_PLACE_DUPLICATION_COUNT;
+  }
+
+  /**
+   * 코스에 이미 포함된 특정 장소의 중복 개수를 반환합니다.
+   *
+   * @param placeId 확인할 장소 식별자
+   * @return 장소의 개수
+   */
+  public long getPlaceCount(int placeId) {
+    return coursePlaces.stream().filter(cp -> cp.getPlaceId() == placeId).count();
+  }
+
+  /**
    * 새 장소를 추가하기 위해 순서를 뒤로 밀어야 하는 대상 목록을 음수 임시 순서로 변경합니다.
    *
    * @param targetOrder 추가하려는 순서
@@ -326,14 +357,59 @@ public class Course {
    * @param targetOrder 지정할 방문 순서, null이면 맨 뒤에 추가
    * @param stayMinute 체류 시간(분)
    * @return 생성된 CoursePlace 엔티티
+   * @throws MaxPlaceDuplicationExceededException 이미 동일 장소가 최대 중복 개수(2개)만큼 존재하는 경우
    */
   public CoursePlace addPlace(int placeId, Integer targetOrder, int stayMinute) {
+    if (!canAddPlace(placeId)) {
+      throw new MaxPlaceDuplicationExceededException();
+    }
     int maxOrder = coursePlaces.stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
     int assignedOrder =
         (targetOrder == null || targetOrder > maxOrder) ? maxOrder + 1 : Math.max(1, targetOrder);
     CoursePlace newCoursePlace = new CoursePlace(this, placeId, assignedOrder, stayMinute);
     this.coursePlaces.add(newCoursePlace);
     return newCoursePlace;
+  }
+
+  /**
+   * 코스에 포함된 장소들의 방문 순서를 새로운 순서대로 일괄 변경하기 위해 임시 음수 순서로 설정합니다.
+   *
+   * @param newOrderPlaceIds 새로운 방문 순서대로 나열된 코스 장소 식별자 목록
+   * @throws InvalidCoursePlaceOrderException 목록이 비어 있거나 기존 장소 목록과 일치하지 않는 경우
+   */
+  public void reorderPlaces(List<Integer> newOrderPlaceIds) {
+    if (newOrderPlaceIds == null
+        || newOrderPlaceIds.isEmpty()
+        || newOrderPlaceIds.size() != coursePlaces.size()) {
+      throw new InvalidCoursePlaceOrderException();
+    }
+    Set<Integer> existingIds =
+        coursePlaces.stream().map(CoursePlace::getCoursePlaceId).collect(Collectors.toSet());
+    Set<Integer> newIds = new HashSet<>(newOrderPlaceIds);
+    if (!existingIds.equals(newIds)) {
+      throw new InvalidCoursePlaceOrderException();
+    }
+    for (int i = 0; i < coursePlaces.size(); i++) {
+      coursePlaces.get(i).setOrder(-(i + 1));
+    }
+  }
+
+  /**
+   * 임시 음수 순서로 설정된 장소들을 새로운 방문 순서(1부터 시작)로 최종 확정합니다.
+   *
+   * @param newOrderPlaceIds 새로운 방문 순서대로 나열된 코스 장소 식별자 목록
+   */
+  public void applyNewOrders(List<Integer> newOrderPlaceIds) {
+    Map<Integer, CoursePlace> map =
+        coursePlaces.stream()
+            .collect(Collectors.toMap(CoursePlace::getCoursePlaceId, Function.identity()));
+    for (int order = 1; order <= newOrderPlaceIds.size(); order++) {
+      int coursePlaceId = newOrderPlaceIds.get(order - 1);
+      CoursePlace cp = map.get(coursePlaceId);
+      if (cp != null) {
+        cp.setOrder(order);
+      }
+    }
   }
 
   /**

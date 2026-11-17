@@ -4,9 +4,11 @@ import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
@@ -67,6 +69,7 @@ public class CourseFacade {
    * @return 추가 결과
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
    * @throws PlaceNotFoundException 장소가 존재하지 않거나 비활성화/삭제된 경우
+   * @throws MaxPlaceDuplicationExceededException 동일한 장소가 이미 최대 허용 횟수(2개)만큼 존재하는 경우
    */
   @Transactional
   public AddCoursePlaceResult addPlaceToCourse(String memberId, AddCoursePlaceCommand command) {
@@ -74,6 +77,17 @@ public class CourseFacade {
       throw new PlaceNotFoundException();
     }
     return courseCommandService.addPlace(memberId, command);
+  }
+
+  /**
+   * 코스 장소의 방문 순서를 일괄 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param command 순서 변경 조건
+   */
+  @Transactional
+  public void updateCoursePlaceOrders(String memberId, UpdateCoursePlaceOrdersCommand command) {
+    courseCommandService.reorderPlaces(memberId, command);
   }
 
   /**

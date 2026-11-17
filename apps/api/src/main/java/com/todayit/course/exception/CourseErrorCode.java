@@ -39,7 +39,11 @@ public enum CourseErrorCode implements ErrorCode {
   INVALID_ORDER("INVALID_COURSE_PLACE_ORDER", "방문 순서는 1 이상이어야 합니다."),
 
   /** 체류 시간이 유효 범위를 벗어난 경우입니다. */
-  INVALID_STAY_MINUTE("INVALID_STAY_MINUTE", "체류 시간은 0분 이상 1440분 이하이어야 합니다.");
+  INVALID_STAY_MINUTE("INVALID_STAY_MINUTE", "체류 시간은 0분 이상 1440분 이하이어야 합니다."),
+
+  /** 동일한 장소를 허용 횟수(최대 2회)를 초과하여 추가하려는 경우입니다. */
+  MAX_PLACE_DUPLICATION_EXCEEDED(
+      "MAX_PLACE_DUPLICATION_EXCEEDED", "동일한 장소는 코스에 최대 2회까지만 추가할 수 있습니다.");
 
   private final String code;
   private final String message;
