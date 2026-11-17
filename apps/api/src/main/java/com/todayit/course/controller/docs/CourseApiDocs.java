@@ -34,7 +34,7 @@ public interface CourseApiDocs {
           "로그인한 회원이 입력한 정보로 작성 중인 코스를 만듭니다. 생성한 코스는 비공개이며 상태는 DRAFT입니다. "
               + "코스명, 시도 코드, 콘셉트, 시작 시각, 이동수단은 필수이고, "
               + "시군구 코드(sigunguCode)와 종료 시각(endAt)은 선택입니다. "
-              + "생성 직후에는 장소 목록이 비어 있고 요약 설명은 null입니다. "
+              + "생성 성공 시 새로 발급된 courseId를 반환합니다. "
               + "같은 요청을 다시 보내면 새로운 코스가 생성됩니다.",
       security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
   @ApiResponses({
@@ -48,7 +48,7 @@ public interface CourseApiDocs {
                     @ExampleObject(
                         value =
                             """
-                    {"success":true,"data":{"courseId":1,"title":"종로 데이트","status":"DRAFT","places":[],"courseSummary":null,"createdAt":"2026-11-17T12:00:00"}}
+                    {"success":true,"data":{"courseId":1}}
                     """))),
     @ApiResponse(
         responseCode = "400",

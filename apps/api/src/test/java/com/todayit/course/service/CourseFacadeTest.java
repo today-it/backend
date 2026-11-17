@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.service.command.CreateCourseCommand;
@@ -39,9 +38,7 @@ class CourseFacadeTest {
             LocalDateTime.of(2026, 12, 1, 10, 0),
             LocalDateTime.of(2026, 12, 1, 14, 0),
             CourseTransport.WALKING);
-    CreateCourseResult expected =
-        new CreateCourseResult(
-            1, "코스", CourseStatus.DRAFT, null, LocalDateTime.of(2026, 11, 17, 12, 0));
+    CreateCourseResult expected = new CreateCourseResult(1);
     when(regions.findRegionIds("11", null)).thenReturn(List.of(7, 8));
     when(courses.createCourse("member-1", command, List.of(7, 8))).thenReturn(expected);
 
@@ -65,9 +62,7 @@ class CourseFacadeTest {
             LocalDateTime.of(2026, 12, 1, 10, 0),
             LocalDateTime.of(2026, 12, 1, 14, 0),
             CourseTransport.WALKING);
-    CreateCourseResult expected =
-        new CreateCourseResult(
-            1, "코스", CourseStatus.DRAFT, null, LocalDateTime.of(2026, 11, 17, 12, 0));
+    CreateCourseResult expected = new CreateCourseResult(1);
     when(regions.findRegionIds("11", "110")).thenReturn(List.of(7, 8));
     when(courses.createCourse("member-1", command, List.of(7, 8))).thenReturn(expected);
 

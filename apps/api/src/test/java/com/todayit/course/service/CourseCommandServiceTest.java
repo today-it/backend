@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.todayit.course.entity.Course;
-import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
@@ -33,7 +32,7 @@ class CourseCommandServiceTest {
   @InjectMocks private CourseCommandService service;
 
   @Test
-  @DisplayName("직접 생성은 AI 설명이나 확정 상태를 만들지 않는다")
+  @DisplayName("코스를 생성하면 저장된 DRAFT의 courseId를 반환한다")
   void createsDraftWithoutGeneratedContent() {
     // given
     when(courses.findThemesByNames(List.of("감성적"))).thenReturn(List.of(mock(Theme.class)));
@@ -43,10 +42,7 @@ class CourseCommandServiceTest {
     CreateCourseResult result = service.createCourse("member-1", command(), List.of(7));
 
     // then
-    assertThat(result.status()).isEqualTo(CourseStatus.DRAFT);
-    assertThat(result.title()).isEqualTo("코스");
-    assertThat(result.courseSummary()).isNull();
-    assertThat(result.createdAt()).isNotNull();
+    assertThat(result.courseId()).isEqualTo(0);
   }
 
   @Test

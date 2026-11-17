@@ -47,12 +47,12 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("인증된 회원으로 코스를 생성하고 DRAFT와 빈 장소 목록을 반환한다")
+  @DisplayName("인증된 회원으로 코스를 생성하고 DRAFT의 courseId를 반환한다")
   void createsDraftUsingAuthenticatedMember() throws Exception {
     // given
     LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
     when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12, "종로 데이트", CourseStatus.DRAFT, null, createdAt));
+        .thenReturn(new CreateCourseResult(12));
     String request =
         """
         {
@@ -82,11 +82,8 @@ class CourseControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.courseId").value(12))
-        .andExpect(jsonPath("$.data.title").value("종로 데이트"))
-        .andExpect(jsonPath("$.data.status").value("DRAFT"))
-        .andExpect(jsonPath("$.data.places").isEmpty())
-        .andExpect(jsonPath("$.data.courseSummary").value(org.hamcrest.Matchers.nullValue()))
-        .andExpect(jsonPath("$.data.createdAt").isNotEmpty());
+        .andExpect(jsonPath("$.data.title").doesNotExist())
+        .andExpect(jsonPath("$.data.places").doesNotExist());
     verify(courseFacade)
         .createCourse(
             "member-1",
@@ -246,7 +243,7 @@ class CourseControllerTest {
     // given
     LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
     when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12, "종로 데이트", CourseStatus.DRAFT, null, createdAt));
+        .thenReturn(new CreateCourseResult(12));
     String request =
         """
         {
@@ -603,7 +600,7 @@ class CourseControllerTest {
     // given
     LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
     when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12, "종로 데이트", CourseStatus.DRAFT, null, createdAt));
+        .thenReturn(new CreateCourseResult(12));
     String request =
         """
         {
@@ -633,8 +630,7 @@ class CourseControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.courseId").value(12))
-        .andExpect(jsonPath("$.data.title").value("종로 데이트"))
-        .andExpect(jsonPath("$.data.status").value("DRAFT"));
+;
     verify(courseFacade)
         .createCourse(
             "member-1",
