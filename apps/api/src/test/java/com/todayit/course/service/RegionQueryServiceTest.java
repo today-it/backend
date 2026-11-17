@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.todayit.course.entity.Region;
 import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.repository.RegionRepository;
+import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.RegionFilter;
 import com.todayit.course.service.model.RegionResult;
 import com.todayit.course.service.model.SigunguResult;
@@ -188,5 +189,55 @@ class RegionQueryServiceTest {
     // When & Then
     assertThatThrownBy(() -> service.findRegionIds(List.of(new RegionFilter("41", List.of("999")))))
         .isInstanceOf(InvalidRegionPathException.class);
+  }
+
+  @Test
+  @DisplayName("단일 시군구 지역 식별자 목록으로 코스 지역 요약을 반환한다")
+  void summarizesSingleSigungu() {
+    // given
+    Region region = new Region(1, "11", "110", "서울특별시", "종로구");
+    when(regionRepository.findAllById(List.of(1))).thenReturn(List.of(region));
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    // when
+    CourseRegionResult result = service.getCourseRegionSummary(List.of(1));
+
+    // then
+    assertThat(result).isNotNull();
+    assertThat(result.sidoCode()).isEqualTo("11");
+    assertThat(result.sidoName()).isEqualTo("서울특별시");
+    assertThat(result.sigunguCode()).isEqualTo("110");
+    assertThat(result.sigunguName()).isEqualTo("종로구");
+  }
+
+  @Test
+  @DisplayName("여러 시군구가 포함된 시도 전체 대상이면 시군구는 null로 요약한다")
+  void summarizesWholeSidoWhenMultipleSigungusPresent() {
+    // given
+    Region r1 = new Region(1, "11", "110", "서울특별시", "종로구");
+    Region r2 = new Region(2, "11", "680", "서울특별시", "강남구");
+    when(regionRepository.findAllById(List.of(1, 2))).thenReturn(List.of(r1, r2));
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    // when
+    CourseRegionResult result = service.getCourseRegionSummary(List.of(1, 2));
+
+    // then
+    assertThat(result).isNotNull();
+    assertThat(result.sidoCode()).isEqualTo("11");
+    assertThat(result.sidoName()).isEqualTo("서울특별시");
+    assertThat(result.sigunguCode()).isNull();
+    assertThat(result.sigunguName()).isNull();
+  }
+
+  @Test
+  @DisplayName("지역 식별자 목록이 비어 있거나 없으면 null을 반환한다")
+  void returnsNullWhenRegionIdsEmptyOrNotFound() {
+    // given
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    // when & then
+    assertThat(service.getCourseRegionSummary(null)).isNull();
+    assertThat(service.getCourseRegionSummary(List.of())).isNull();
   }
 }

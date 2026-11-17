@@ -12,6 +12,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** 회원이 만든 코스의 기본 정보와 상태를 나타냅니다. */
@@ -82,10 +83,9 @@ public class Course {
    * @param transport 이동수단
    * @param startAt 방문 시작 시각
    * @param endAt 방문 종료 시각, 미입력 시 null
-   * @param regionIds 검증된 지역 식별자 목록
    * @param selectedThemes 검증된 콘셉트 목록
    * @param createdAt 서버 생성 시각
-   * @return 장소와 설명이 없는 비공개 DRAFT
+   * @return 장소와 지역이 없는 비공개 DRAFT
    */
   public static Course createDraft(
       String memberId,
@@ -93,7 +93,6 @@ public class Course {
       CourseTransport transport,
       LocalDateTime startAt,
       LocalDateTime endAt,
-      List<Integer> regionIds,
       List<Theme> selectedThemes,
       LocalDateTime createdAt) {
     Course course = new Course();
@@ -105,17 +104,197 @@ public class Course {
     course.status = CourseStatus.DRAFT;
     course.visibility = CourseVisibility.PRIVATE;
     course.createdAt = createdAt;
-    regionIds.forEach(id -> course.regions.add(new RegionCourse(course, id)));
     selectedThemes.forEach(theme -> course.themes.add(new CourseTheme(course, theme)));
     return course;
   }
 
+  /**
+   * 특정 회원이 이 코스를 조회할 권한이 있는지 확인합니다. 공개 상태이면서 활성 상태인 코스는 누구나 조회할 수 있으며, 비공개 코스나 DRAFT 코스는 작성자 본인만
+   * 조회할 수 있습니다.
+   *
+   * @param accessorMemberId 조회를 시도하는 회원 식별자, 비회원이면 null
+   * @return 조회 가능 여부
+   */
+  public boolean canAccess(String accessorMemberId) {
+    if (deletedAt != null || status == CourseStatus.DELETED) {
+      return false;
+    }
+    if (visibility == CourseVisibility.PUBLIC && status == CourseStatus.ACTIVE) {
+      return true;
+    }
+    return accessorMemberId != null && memberId.equals(accessorMemberId);
+  }
+
+  /**
+   * 특정 회원이 이 코스의 작성자인지 확인합니다.
+   *
+   * @param accessorMemberId 확인할 회원 식별자, 비회원이면 null
+   * @return 작성자 여부
+   */
+  public boolean isWriter(String accessorMemberId) {
+    return accessorMemberId != null && memberId.equals(accessorMemberId);
+  }
+
+  /**
+   * 코스 식별자를 반환합니다.
+   *
+   * @return 코스 식별자
+   */
+  public int getCourseId() {
+    return courseId;
+  }
+
+  /**
+   * 작성자 회원 식별자를 반환합니다.
+   *
+   * @return 작성자 회원 식별자
+   */
+  public String getMemberId() {
+    return memberId;
+  }
+
+  /**
+   * 코스명을 반환합니다.
+   *
+   * @return 코스명
+   */
+  public String getTitle() {
+    return title;
+  }
+
+  /**
+   * 코스 요약을 반환합니다.
+   *
+   * @return 코스 요약, 없으면 null
+   */
+  public String getCourseSummary() {
+    return courseSummary;
+  }
+
+  /**
+   * 이동수단을 반환합니다.
+   *
+   * @return 이동수단
+   */
+  public CourseTransport getTransport() {
+    return transport;
+  }
+
+  /**
+   * 시작 시각을 반환합니다.
+   *
+   * @return 시작 시각
+   */
+  public LocalDateTime getStartAt() {
+    return startAt;
+  }
+
+  /**
+   * 종료 시각을 반환합니다.
+   *
+   * @return 종료 시각, 없으면 null
+   */
+  public LocalDateTime getEndAt() {
+    return endAt;
+  }
+
+  /**
+   * 상태를 반환합니다.
+   *
+   * @return 상태
+   */
   public CourseStatus getStatus() {
     return status;
   }
 
+  /**
+   * 공개 범위를 반환합니다.
+   *
+   * @return 공개 범위
+   */
+  public CourseVisibility getVisibility() {
+    return visibility;
+  }
+
+  /**
+   * 조회수를 반환합니다.
+   *
+   * @return 조회수
+   */
+  public int getViewCount() {
+    return viewCount;
+  }
+
+  /**
+   * 등록 일시를 반환합니다.
+   *
+   * @return 등록 일시
+   */
   public LocalDateTime getCreatedAt() {
     return createdAt;
+  }
+
+  /**
+   * 수정 일시를 반환합니다.
+   *
+   * @return 수정 일시, 없으면 null
+   */
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
+  }
+
+  /**
+   * 삭제 일시를 반환합니다.
+   *
+   * @return 삭제 일시, 없으면 null
+   */
+  public LocalDateTime getDeletedAt() {
+    return deletedAt;
+  }
+
+  /**
+   * 코스에 포함된 지역 관계 목록을 불변 리스트로 반환합니다.
+   *
+   * @return 지역 관계 목록
+   */
+  public List<RegionCourse> getRegions() {
+    return Collections.unmodifiableList(regions);
+  }
+
+  /**
+   * 코스에 연결된 테마 관계 목록을 불변 리스트로 반환합니다.
+   *
+   * @return 테마 관계 목록
+   */
+  public List<CourseTheme> getThemes() {
+    return Collections.unmodifiableList(themes);
+  }
+
+  /**
+   * 코스에 포함된 장소 목록을 불변 리스트로 반환합니다.
+   *
+   * @return 장소 목록
+   */
+  public List<CoursePlace> getCoursePlaces() {
+    return Collections.unmodifiableList(coursePlaces);
+  }
+
+  /**
+   * 코스에 장소를 추가합니다.
+   *
+   * @param coursePlace 추가할 코스 장소 엔티티
+   */
+  public void addCoursePlace(CoursePlace coursePlace) {
+    this.coursePlaces.add(coursePlace);
+  }
+
+  /**
+   * 코스에 지역 관계를 추가합니다.
+   *
+   * @param regionId 연결할 지역 식별자
+   */
+  public void addRegion(int regionId) {
+    this.regions.add(new RegionCourse(this, regionId));
   }
 
   /**

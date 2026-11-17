@@ -13,8 +13,6 @@ import java.util.List;
  * 코스 생성 요청입니다.
  *
  * @param title 코스명, 앞뒤 공백 제거 후 1~100자
- * @param sidoCode 시·도 법정동 코드 2자리
- * @param sigunguCode 시·군·구 법정동 코드 3자리, 선택 입력
  * @param themes 중복 없는 콘셉트 1~2개
  * @param startAt 방문 시작 시각
  * @param endAt 방문 종료 시각, 선택 입력
@@ -22,8 +20,8 @@ import java.util.List;
  */
 @Schema(
     description =
-        "새 코스를 만들 때 입력하는 정보입니다. 코스명, 시도 코드, 콘셉트, 시작 시각, 이동수단은 필수입니다. "
-            + "시군구 코드와 종료 시각은 선택이며 입력하지 않으면 null로 저장됩니다.")
+        "새 코스를 만들 때 입력하는 정보입니다. 코스명, 콘셉트, 시작 시각, 이동수단은 필수입니다. "
+            + "종료 시각은 선택이며 입력하지 않으면 null로 저장됩니다.")
 public record CreateCourseRequest(
     @Schema(
             description = "사용자가 정한 코스 이름입니다. 앞뒤 공백을 제거한 뒤 1~100자로 입력합니다.",
@@ -32,19 +30,6 @@ public record CreateCourseRequest(
             maxLength = 100,
             requiredMode = Schema.RequiredMode.REQUIRED)
         String title,
-    @Schema(
-            description = "코스를 계획한 지역의 시·도 법정동 코드 2자리(예: 서울 11)로 입력합니다.",
-            example = "11",
-            requiredMode = Schema.RequiredMode.REQUIRED)
-        String sidoCode,
-    @Schema(
-            description =
-                "코스를 계획한 지역의 시·군·구 법정동 코드 3자리(예: 종로구 110)로 입력합니다. "
-                    + "시·도 전체를 대상으로 할 때는 생략하거나 null로 입력합니다.",
-            example = "110",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-            nullable = true)
-        String sigunguCode,
     @Schema(
             description =
                 "코스에서 느끼고 싶은 분위기의 이름을 중복 없이 1~2개 입력합니다. "
@@ -84,11 +69,6 @@ public record CreateCourseRequest(
     if (title == null || title.isBlank() || title.strip().length() > MAX_TITLE_LENGTH) {
       throw new CourseException(CourseErrorCode.INVALID_TITLE);
     }
-    if (sidoCode == null
-        || !sidoCode.matches("[0-9]{2}")
-        || (sigunguCode != null && !sigunguCode.matches("[0-9]{3}"))) {
-      throw new CourseException(CourseErrorCode.INVALID_REGION);
-    }
     if (themes == null
         || themes.isEmpty()
         || themes.size() > MAX_THEME_COUNT
@@ -113,7 +93,6 @@ public record CreateCourseRequest(
    * @return 코스 생성 조건
    */
   public CreateCourseCommand toCommand() {
-    return new CreateCourseCommand(
-        title.strip(), sidoCode, sigunguCode, themes, startAt, endAt, transport);
+    return new CreateCourseCommand(title.strip(), themes, startAt, endAt, transport);
   }
 }

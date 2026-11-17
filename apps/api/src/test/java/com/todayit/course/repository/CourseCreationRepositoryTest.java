@@ -49,14 +49,9 @@ class CourseCreationRepositoryTest {
     List<Theme> themes = courses.findThemesByNames(List.of("감성적", "여유로움"));
     Course course =
         Course.createDraft(
-            "member-1",
-            "종로 데이트",
-            CourseTransport.WALKING,
-            start,
-            end,
-            List.of(7, 8),
-            themes,
-            start.minusDays(1));
+            "member-1", "종로 데이트", CourseTransport.WALKING, start, end, themes, start.minusDays(1));
+    course.addRegion(7);
+    course.addRegion(8);
 
     // when
     int id = courses.saveAndFlush(course).getSnapshot().courseId();
@@ -93,14 +88,9 @@ class CourseCreationRepositoryTest {
     List<Theme> themes = courses.findThemesByNames(List.of("감성적", "여유로움"));
     Course course =
         Course.createDraft(
-            "member-1",
-            "종로 데이트",
-            CourseTransport.WALKING,
-            start,
-            null,
-            List.of(7, 8),
-            themes,
-            start.minusDays(1));
+            "member-1", "종로 데이트", CourseTransport.WALKING, start, null, themes, start.minusDays(1));
+    course.addRegion(7);
+    course.addRegion(8);
 
     // when
     int id = courses.saveAndFlush(course).getSnapshot().courseId();
@@ -126,7 +116,6 @@ class CourseCreationRepositoryTest {
             CourseTransport.WALKING,
             start,
             end,
-            List.of(),
             List.of(entities.getReference(Theme.class, 999)),
             start);
 

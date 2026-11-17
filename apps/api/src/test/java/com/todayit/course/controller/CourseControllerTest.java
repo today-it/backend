@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,12 +13,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
+import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
-import com.todayit.course.exception.InvalidRegionPathException;
+import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.model.CourseDetailResult;
+import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,14 +56,11 @@ class CourseControllerTest {
   void createsDraftUsingAuthenticatedMember() throws Exception {
     // given
     LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
-    when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12));
+    when(courseFacade.createCourse(eq("member-1"), any())).thenReturn(new CreateCourseResult(12));
     String request =
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -89,8 +91,6 @@ class CourseControllerTest {
             "member-1",
             new CreateCourseCommand(
                 "종로 데이트",
-                "11",
-                "110",
                 List.of("감성적", "여유로움"),
                 LocalDateTime.of(2026, 12, 1, 10, 0),
                 LocalDateTime.of(2026, 12, 1, 14, 0),
@@ -105,8 +105,6 @@ class CourseControllerTest {
         """
         {
           "title": null,
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -140,8 +138,6 @@ class CourseControllerTest {
         """
         {
           "title": " ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -168,124 +164,6 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("시도 코드가 2자리 숫자가 아니면 400을 반환한다")
-  void rejectsInvalidSidoCode() throws Exception {
-    // given
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "sidoCode": "서울",
-          "sigunguCode": "110",
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "endAt": "2026-12-01T14:00:00",
-          "transport": "WALKING"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_REGION"));
-    verifyNoInteractions(courseFacade);
-  }
-
-  @Test
-  @DisplayName("시군구 코드가 3자리 숫자가 아니면 400을 반환한다")
-  void rejectsInvalidSigunguCode() throws Exception {
-    // given
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "11",
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "endAt": "2026-12-01T14:00:00",
-          "transport": "WALKING"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_REGION"));
-    verifyNoInteractions(courseFacade);
-  }
-
-  @Test
-  @DisplayName("시도 코드만 입력해도 DRAFT를 정상 생성한다")
-  void createsDraftWithOnlySidoCode() throws Exception {
-    // given
-    LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
-    when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12));
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": null,
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "endAt": "2026-12-01T14:00:00",
-          "transport": "WALKING"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.success").value(true));
-    verify(courseFacade)
-        .createCourse(
-            "member-1",
-            new CreateCourseCommand(
-                "종로 데이트",
-                "11",
-                null,
-                List.of("감성적", "여유로움"),
-                LocalDateTime.of(2026, 12, 1, 10, 0),
-                LocalDateTime.of(2026, 12, 1, 14, 0),
-                CourseTransport.WALKING));
-  }
-
-  @Test
   @DisplayName("콘셉트가 없으면 400을 반환한다")
   void rejectsMissingThemes() throws Exception {
     // given
@@ -293,8 +171,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": null,
           "startAt": "2026-12-01T10:00:00",
           "endAt": "2026-12-01T14:00:00",
@@ -325,8 +201,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [],
           "startAt": "2026-12-01T10:00:00",
           "endAt": "2026-12-01T14:00:00",
@@ -357,8 +231,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움",
@@ -393,8 +265,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "감성적"
@@ -428,8 +298,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             null
           ],
@@ -462,8 +330,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -497,8 +363,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -532,8 +396,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -567,8 +429,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -599,14 +459,11 @@ class CourseControllerTest {
   void createsDraftWithoutEndTime() throws Exception {
     // given
     LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
-    when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenReturn(new CreateCourseResult(12));
+    when(courseFacade.createCourse(eq("member-1"), any())).thenReturn(new CreateCourseResult(12));
     String request =
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -629,15 +486,12 @@ class CourseControllerTest {
     result
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.courseId").value(12))
-;
+        .andExpect(jsonPath("$.data.courseId").value(12));
     verify(courseFacade)
         .createCourse(
             "member-1",
             new CreateCourseCommand(
                 "종로 데이트",
-                "11",
-                "110",
                 List.of("감성적", "여유로움"),
                 LocalDateTime.of(2026, 12, 1, 10, 0),
                 null,
@@ -652,8 +506,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -687,8 +539,6 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
@@ -722,8 +572,6 @@ class CourseControllerTest {
         """
         {
           "title": "종로 데이트",
-          "sidoCode": "11",
-          "sigunguCode": "110",
           "themes": ["감성적"],
           "startAt": "2026-12-01T10:00:00",
           "endAt": "2026-12-01T14:00:00",
@@ -749,36 +597,128 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("존재하지 않는 지역이면 지역 전용 오류 코드를 반환한다")
-  void returnsInvalidRegionPathCode() throws Exception {
+  @DisplayName("회원 인증 상태로 코스 상세 정보를 정상 조회한다")
+  void getsCourseDetailSuccessfully() throws Exception {
     // given
-    String request =
-        """
-        {
-          "title": "종로 데이트",
-          "sidoCode": "11",
-          "sigunguCode": "110",
-          "themes": ["감성적"],
-          "startAt": "2026-12-01T10:00:00",
-          "endAt": "2026-12-01T14:00:00",
-          "transport": "WALKING"
-        }
-        """;
-    when(courseFacade.createCourse(eq("member-1"), any()))
-        .thenThrow(new InvalidRegionPathException());
+    LocalDateTime startAt = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime endAt = LocalDateTime.of(2026, 12, 1, 14, 0);
+    CoursePlaceDetailResult place =
+        new CoursePlaceDetailResult(
+            1,
+            10,
+            "블루보틀 삼청",
+            "CAFE_DESSERT",
+            "서울특별시 종로구 북촌로 5길",
+            new BigDecimal("37.58123400"),
+            new BigDecimal("126.98123400"),
+            "https://example.com/place.jpg",
+            1,
+            60);
+    CourseDetailResult detail =
+        new CourseDetailResult(
+            1,
+            "종로 데이트",
+            "삼청동 카페 투어",
+            CourseTransport.WALKING,
+            startAt,
+            endAt,
+            CourseStatus.DRAFT,
+            CourseVisibility.PRIVATE,
+            5,
+            "11",
+            "서울특별시",
+            "110",
+            "종로구",
+            List.of("감성적"),
+            true,
+            List.of(place),
+            startAt.minusDays(1),
+            null);
+    when(courseFacade.getCourseDetail(1, "member-1")).thenReturn(detail);
 
     // when
     ResultActions result =
         mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
+            get("/api/v1/courses/1")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
     // then
     result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_REGION_PATH"))
-        .andExpect(jsonPath("$.message").value("지역 필터 값이 올바르지 않습니다."));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.title").value("종로 데이트"))
+        .andExpect(jsonPath("$.data.courseSummary").value("삼청동 카페 투어"))
+        .andExpect(jsonPath("$.data.transport").value("WALKING"))
+        .andExpect(jsonPath("$.data.status").value("DRAFT"))
+        .andExpect(jsonPath("$.data.visibility").value("PRIVATE"))
+        .andExpect(jsonPath("$.data.sidoCode").value("11"))
+        .andExpect(jsonPath("$.data.sidoName").value("서울특별시"))
+        .andExpect(jsonPath("$.data.sigunguCode").value("110"))
+        .andExpect(jsonPath("$.data.sigunguName").value("종로구"))
+        .andExpect(jsonPath("$.data.themes[0]").value("감성적"))
+        .andExpect(jsonPath("$.data.isWriter").value(true))
+        .andExpect(jsonPath("$.data.places[0].coursePlaceId").value(1))
+        .andExpect(jsonPath("$.data.places[0].name").value("블루보틀 삼청"))
+        .andExpect(jsonPath("$.data.places[0].stayMinute").value(60));
+  }
+
+  @Test
+  @DisplayName("비회원으로 공개 코스 상세 정보를 정상 조회하면 isWriter는 false이다")
+  void getsPublicCourseDetailAsAnonymous() throws Exception {
+    // given
+    LocalDateTime startAt = LocalDateTime.of(2026, 12, 1, 10, 0);
+    CourseDetailResult detail =
+        new CourseDetailResult(
+            1,
+            "종로 데이트",
+            null,
+            CourseTransport.WALKING,
+            startAt,
+            null,
+            CourseStatus.ACTIVE,
+            CourseVisibility.PUBLIC,
+            12,
+            "11",
+            "서울특별시",
+            null,
+            null,
+            List.of("감성적"),
+            false,
+            List.of(),
+            startAt.minusDays(1),
+            null);
+    when(courseFacade.getCourseDetail(1, null)).thenReturn(detail);
+
+    // when
+    ResultActions result = mvc.perform(get("/api/v1/courses/1"));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.isWriter").value(false))
+        .andExpect(jsonPath("$.data.places").isEmpty());
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 접근 권한이 없는 코스는 404와 COURSE_NOT_FOUND를 반환한다")
+  void returnsNotFoundWhenCourseCannotBeAccessed() throws Exception {
+    // given
+    when(courseFacade.getCourseDetail(99, "member-1")).thenThrow(new CourseNotFoundException());
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            get("/api/v1/courses/99")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"))
+        .andExpect(jsonPath("$.message").value("코스를 찾을 수 없습니다."));
   }
 }

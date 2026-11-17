@@ -4,6 +4,7 @@ import com.todayit.course.entity.Region;
 import com.todayit.course.entity.Region.RegionSnapshot;
 import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.repository.RegionRepository;
+import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.RegionFilter;
 import com.todayit.course.service.model.RegionResult;
 import com.todayit.course.service.model.SigunguResult;
@@ -70,6 +71,34 @@ public class RegionQueryService implements RegionPlaceQueryService {
    * @return 조건에 해당하는 지역 식별자 목록
    * @throws InvalidRegionPathException 코드 형식이 잘못되었거나 해당 지역이 없을 때
    */
+  /**
+   * 지역 식별자 목록을 바탕으로 코스 지역 요약 정보를 조회합니다.
+   *
+   * @param regionIds 지역 식별자 목록
+   * @return 코스 지역 요약 정보, 지역 정보가 없으면 null
+   */
+  @Transactional(readOnly = true)
+  public CourseRegionResult getCourseRegionSummary(List<Integer> regionIds) {
+    if (regionIds == null || regionIds.isEmpty()) {
+      return null;
+    }
+    List<Region> regions = regionRepository.findAllById(regionIds);
+    if (regions.isEmpty()) {
+      return null;
+    }
+    String sidoCode = regions.get(0).getSnapshot().sidoCode();
+    String sidoName = regions.get(0).getSnapshot().sidoName();
+    Set<String> sigungus =
+        regions.stream().map(r -> r.getSnapshot().sigunguCode()).collect(Collectors.toSet());
+    String sigunguCode = null;
+    String sigunguName = null;
+    if (sigungus.size() == 1) {
+      sigunguCode = regions.get(0).getSnapshot().sigunguCode();
+      sigunguName = regions.get(0).getSnapshot().sigunguName();
+    }
+    return new CourseRegionResult(sidoCode, sidoName, sigunguCode, sigunguName);
+  }
+
   @Transactional(readOnly = true)
   @Override
   public List<Integer> findRegionIds(String sidoCode, String sigunguCode) {

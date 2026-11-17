@@ -39,7 +39,7 @@ class CourseCommandServiceTest {
     when(courses.save(any(Course.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
-    CreateCourseResult result = service.createCourse("member-1", command(), List.of(7));
+    CreateCourseResult result = service.createCourse("member-1", command());
 
     // then
     assertThat(result.courseId()).isEqualTo(0);
@@ -53,8 +53,7 @@ class CourseCommandServiceTest {
 
     // when
     CourseException exception =
-        assertThrows(
-            CourseException.class, () -> service.createCourse("member-1", command(), List.of(7)));
+        assertThrows(CourseException.class, () -> service.createCourse("member-1", command()));
 
     // then
     assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.UNSUPPORTED_THEME);
@@ -64,8 +63,6 @@ class CourseCommandServiceTest {
   private CreateCourseCommand command() {
     return new CreateCourseCommand(
         "코스",
-        "11",
-        "110",
         List.of("감성적"),
         LocalDateTime.of(2026, 12, 1, 10, 0),
         LocalDateTime.of(2026, 12, 1, 14, 0),

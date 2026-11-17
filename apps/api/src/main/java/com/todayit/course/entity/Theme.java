@@ -21,4 +21,22 @@ public class Theme {
   private String name;
 
   protected Theme() {}
+
+  /**
+   * 테마 식별자를 반환합니다.
+   *
+   * @return 테마 식별자
+   */
+  public int getThemeId() {
+    return themeId;
+  }
+
+  /**
+   * 테마 이름을 반환합니다.
+   *
+   * @return 테마 이름
+   */
+  public String getName() {
+    return name;
+  }
 }

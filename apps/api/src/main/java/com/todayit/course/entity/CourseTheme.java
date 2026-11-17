@@ -34,4 +34,13 @@ public class CourseTheme {
     this.course = course;
     this.theme = theme;
   }
+
+  /**
+   * 연결된 테마 엔티티를 반환합니다.
+   *
+   * @return 테마 엔티티
+   */
+  public Theme getTheme() {
+    return theme;
+  }
 }

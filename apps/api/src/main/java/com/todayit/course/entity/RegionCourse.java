@@ -33,4 +33,13 @@ public class RegionCourse {
     this.course = course;
     this.regionId = regionId;
   }
+
+  /**
+   * 지역 식별자를 반환합니다.
+   *
+   * @return 지역 식별자
+   */
+  public int getRegionId() {
+    return regionId;
+  }
 }

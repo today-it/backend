@@ -2,6 +2,8 @@ package com.todayit.course.service;
 
 import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
+import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.model.CourseResult;
 import com.todayit.course.service.model.CourseSort;
@@ -27,6 +29,22 @@ public class CourseQueryService implements CoursePlaceQueryService {
    * @param placeId 장소 식별자
    * @return 평균 체류 시간(분), 0분을 제외한 체류 시간이 없으면 0
    */
+  /**
+   * 코스 식별자로 코스를 조회합니다.
+   *
+   * @param courseId 코스 식별자
+   * @return 조회된 코스 엔티티
+   * @throws CourseNotFoundException 코스가 없거나 삭제된 경우
+   */
+  @Transactional(readOnly = true)
+  public Course getCourse(int courseId) {
+    Course course = courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
+    if (course.getDeletedAt() != null || course.getStatus() == CourseStatus.DELETED) {
+      throw new CourseNotFoundException();
+    }
+    return course;
+  }
+
   @Override
   @Transactional(readOnly = true)
   public long getAverageStayMinutes(int placeId) {

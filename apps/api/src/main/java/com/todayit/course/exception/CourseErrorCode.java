@@ -3,7 +3,7 @@ package com.todayit.course.exception;
 import com.todayit.common.exception.ErrorCode;
 import com.todayit.common.exception.ErrorStatus;
 
-/** 코스 생성에서 사용하는 오류 코드입니다. */
+/** 코스 기능에서 사용하는 오류 코드입니다. */
 public enum CourseErrorCode implements ErrorCode {
   /** 코스명이 없거나 허용 길이를 벗어난 경우입니다. */
   INVALID_TITLE("INVALID_COURSE_TITLE", "코스명은 1자 이상 100자 이하이어야 합니다."),
@@ -24,14 +24,23 @@ public enum CourseErrorCode implements ErrorCode {
   INVALID_END_AT("INVALID_COURSE_END_AT", "종료 시각은 시작 시각 이후이어야 합니다."),
 
   /** 이동수단을 입력하지 않은 경우입니다. */
-  TRANSPORT_REQUIRED("COURSE_TRANSPORT_REQUIRED", "이동수단은 필수입니다.");
+  TRANSPORT_REQUIRED("COURSE_TRANSPORT_REQUIRED", "이동수단은 필수입니다."),
+
+  /** 요청한 코스가 존재하지 않거나 비공개 코스에 접근할 권한이 없는 경우입니다. */
+  NOT_FOUND("COURSE_NOT_FOUND", "코스를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND);
 
   private final String code;
   private final String message;
+  private final ErrorStatus status;
 
   CourseErrorCode(String code, String message) {
+    this(code, message, ErrorStatus.BAD_REQUEST);
+  }
+
+  CourseErrorCode(String code, String message, ErrorStatus status) {
     this.code = code;
     this.message = message;
+    this.status = status;
   }
 
   /** {@inheritDoc} */
@@ -49,6 +58,6 @@ public enum CourseErrorCode implements ErrorCode {
   /** {@inheritDoc} */
   @Override
   public ErrorStatus status() {
-    return ErrorStatus.BAD_REQUEST;
+    return status;
   }
 }

@@ -40,4 +40,55 @@ public class CoursePlace {
   private int stayMinute;
 
   protected CoursePlace() {}
+
+  /**
+   * 테스트 및 내부 생성을 위한 생성자입니다.
+   *
+   * @param course 코스 엔티티
+   * @param placeId 장소 식별자
+   * @param order 방문 순서
+   * @param stayMinute 머무는 시간(분)
+   */
+  public CoursePlace(Course course, int placeId, int order, int stayMinute) {
+    this.course = course;
+    this.placeId = placeId;
+    this.order = order;
+    this.stayMinute = stayMinute;
+  }
+
+  /**
+   * 코스 장소 관계 식별자를 반환합니다.
+   *
+   * @return 코스 장소 식별자
+   */
+  public int getCoursePlaceId() {
+    return coursePlaceId;
+  }
+
+  /**
+   * 장소 식별자를 반환합니다.
+   *
+   * @return 장소 식별자
+   */
+  public int getPlaceId() {
+    return placeId;
+  }
+
+  /**
+   * 방문 순서를 반환합니다.
+   *
+   * @return 방문 순서
+   */
+  public int getOrder() {
+    return order;
+  }
+
+  /**
+   * 체류 시간(분)을 반환합니다.
+   *
+   * @return 체류 시간(분)
+   */
+  public int getStayMinute() {
+    return stayMinute;
+  }
 }
