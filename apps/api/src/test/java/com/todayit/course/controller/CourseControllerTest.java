@@ -57,13 +57,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -91,11 +92,11 @@ class CourseControllerTest {
             "member-1",
             new CreateCourseCommand(
                 "종로 데이트",
-                "11110",
+                "11",
+                "110",
                 List.of("감성적", "여유로움"),
                 LocalDateTime.of(2026, 12, 1, 10, 0),
-                null,
-                240,
+                LocalDateTime.of(2026, 12, 1, 14, 0),
                 CourseTransport.WALKING));
   }
 
@@ -107,13 +108,14 @@ class CourseControllerTest {
         """
         {
           "title": null,
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -141,13 +143,14 @@ class CourseControllerTest {
         """
         {
           "title": " ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -168,20 +171,21 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("지역 코드 대신 지역명을 입력하면 400을 반환한다")
-  void rejectsRegionName() throws Exception {
+  @DisplayName("시도 코드가 2자리 숫자가 아니면 400을 반환한다")
+  void rejectsInvalidSidoCode() throws Exception {
     // given
     String request =
         """
         {
           "title": "  종로 데이트  ",
-          "region": "서울",
+          "sidoCode": "서울",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -202,20 +206,21 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("지역 코드 길이가 올바르지 않으면 400을 반환한다")
-  void rejectsInvalidRegionLength() throws Exception {
+  @DisplayName("시군구 코드가 3자리 숫자가 아니면 400을 반환한다")
+  void rejectsInvalidSigunguCode() throws Exception {
     // given
     String request =
         """
         {
           "title": "  종로 데이트  ",
-          "region": "111",
+          "sidoCode": "11",
+          "sigunguCode": "11",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -233,6 +238,54 @@ class CourseControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_COURSE_REGION"));
     verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("시도 코드만 입력해도 DRAFT를 정상 생성한다")
+  void createsDraftWithOnlySidoCode() throws Exception {
+    // given
+    LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
+    when(courseFacade.createCourse(eq("member-1"), any()))
+        .thenReturn(new CreateCourseResult(12, "종로 데이트", CourseStatus.DRAFT, null, createdAt));
+    String request =
+        """
+        {
+          "title": "  종로 데이트  ",
+          "sidoCode": "11",
+          "sigunguCode": null,
+          "themes": [
+            "감성적",
+            "여유로움"
+          ],
+          "startAt": "2026-12-01T10:00:00",
+          "endAt": "2026-12-01T14:00:00",
+          "transport": "WALKING"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true));
+    verify(courseFacade)
+        .createCourse(
+            "member-1",
+            new CreateCourseCommand(
+                "종로 데이트",
+                "11",
+                null,
+                List.of("감성적", "여유로움"),
+                LocalDateTime.of(2026, 12, 1, 10, 0),
+                LocalDateTime.of(2026, 12, 1, 14, 0),
+                CourseTransport.WALKING));
   }
 
   @Test
@@ -243,10 +296,11 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": null,
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -274,10 +328,11 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -305,14 +360,15 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움",
             "아늑함"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -340,13 +396,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "감성적"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -374,12 +431,13 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             null
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -407,13 +465,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": null,
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -441,13 +500,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "wrong",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -475,13 +535,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": null
         }
         """;
@@ -509,13 +570,14 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "PLANE"
         }
         """;
@@ -536,20 +598,24 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("종료 시각과 가용시간이 모두 없으면 400을 반환한다")
-  void rejectsMissingTimeCondition() throws Exception {
+  @DisplayName("종료 시각이 없어도 DRAFT를 정상 생성한다")
+  void createsDraftWithoutEndTime() throws Exception {
     // given
+    LocalDateTime createdAt = LocalDateTime.of(2026, 11, 17, 12, 0);
+    when(courseFacade.createCourse(eq("member-1"), any()))
+        .thenReturn(new CreateCourseResult(12, "종로 데이트", CourseStatus.DRAFT, null, createdAt));
     String request =
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": null,
+          "endAt": null,
           "transport": "WALKING"
         }
         """;
@@ -564,112 +630,22 @@ class CourseControllerTest {
 
     // then
     result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_TIME_CONDITION"));
-    verifyNoInteractions(courseFacade);
-  }
-
-  @Test
-  @DisplayName("가용시간이 0분이면 400을 반환한다")
-  void rejectsZeroDuration() throws Exception {
-    // given
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "region": "11110",
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 0,
-          "transport": "WALKING"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_DURATION"));
-    verifyNoInteractions(courseFacade);
-  }
-
-  @Test
-  @DisplayName("가용시간이 음수이면 400을 반환한다")
-  void rejectsNegativeDuration() throws Exception {
-    // given
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "region": "11110",
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": -1,
-          "transport": "WALKING"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_DURATION"));
-    verifyNoInteractions(courseFacade);
-  }
-
-  @Test
-  @DisplayName("종료 시각과 가용시간을 함께 입력하면 400을 반환한다")
-  void rejectsBothTimeConditions() throws Exception {
-    // given
-    String request =
-        """
-        {
-          "title": "  종로 데이트  ",
-          "region": "11110",
-          "themes": [
-            "감성적",
-            "여유로움"
-          ],
-          "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
-          "transport": "WALKING",
-          "endAt": "2026-12-01T14:00:00"
-        }
-        """;
-
-    // when
-    ResultActions result =
-        mvc.perform(
-            post("/api/v1/courses")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(request));
-
-    // then
-    result
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_COURSE_TIME_CONDITION"));
-    verifyNoInteractions(courseFacade);
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(12))
+        .andExpect(jsonPath("$.data.title").value("종로 데이트"))
+        .andExpect(jsonPath("$.data.status").value("DRAFT"));
+    verify(courseFacade)
+        .createCourse(
+            "member-1",
+            new CreateCourseCommand(
+                "종로 데이트",
+                "11",
+                "110",
+                List.of("감성적", "여유로움"),
+                LocalDateTime.of(2026, 12, 1, 10, 0),
+                null,
+                CourseTransport.WALKING));
   }
 
   @Test
@@ -680,13 +656,13 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": null,
           "transport": "WALKING",
           "endAt": "2026-12-01T10:00:00"
         }
@@ -715,13 +691,13 @@ class CourseControllerTest {
         """
         {
           "title": "  종로 데이트  ",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": [
             "감성적",
             "여유로움"
           ],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": null,
           "transport": "WALKING",
           "endAt": "2026-11-30T10:00:00"
         }
@@ -750,10 +726,11 @@ class CourseControllerTest {
         """
         {
           "title": "종로 데이트",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": ["감성적"],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;
@@ -783,10 +760,11 @@ class CourseControllerTest {
         """
         {
           "title": "종로 데이트",
-          "region": "11110",
+          "sidoCode": "11",
+          "sigunguCode": "110",
           "themes": ["감성적"],
           "startAt": "2026-12-01T10:00:00",
-          "durationMinutes": 240,
+          "endAt": "2026-12-01T14:00:00",
           "transport": "WALKING"
         }
         """;

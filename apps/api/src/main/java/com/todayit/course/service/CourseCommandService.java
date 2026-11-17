@@ -50,7 +50,6 @@ public class CourseCommandService {
             command.transport(),
             command.startAt(),
             command.endAt(),
-            command.durationMinutes(),
             regionIds,
             themes,
             LocalDateTime.now());

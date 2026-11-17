@@ -40,10 +40,11 @@ class CourseCreationRepositoryTest {
   @Autowired private JdbcTemplate jdbc;
 
   @Test
-  @DisplayName("가용시간으로 생성한 DRAFT와 지역·콘셉트 관계를 함께 저장한다")
-  void persistsDraftWithDuration() {
+  @DisplayName("종료 시각으로 생성한 DRAFT와 지역·콘셉트 관계를 함께 저장한다")
+  void persistsDraftWithEndTime() {
     // given
     LocalDateTime start = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime end = start.plusHours(4);
     jdbc.update("insert into theme (theme_id, name) values (3, '감성적'), (4, '여유로움')");
     List<Theme> themes = courses.findThemesByNames(List.of("감성적", "여유로움"));
     Course course =
@@ -52,8 +53,7 @@ class CourseCreationRepositoryTest {
             "종로 데이트",
             CourseTransport.WALKING,
             start,
-            null,
-            120,
+            end,
             List.of(7, 8),
             themes,
             start.minusDays(1));
@@ -69,8 +69,7 @@ class CourseCreationRepositoryTest {
     assertThat(row.get("VISIBILITY")).isEqualTo("PRIVATE");
     assertThat(row.get("VIEW_COUNT")).isEqualTo(0);
     assertThat(row.get("COURSE_SUMMARY")).isNull();
-    assertThat(row.get("DURATION_MINUTES")).isEqualTo(120);
-    assertThat(courses.findById(id).orElseThrow().getSnapshot().endAt()).isNull();
+    assertThat(courses.findById(id).orElseThrow().getSnapshot().endAt()).isEqualTo(end);
     assertThat(
             jdbc.queryForList(
                 "select region_id from region_course where course_id = ?", Integer.class, id))
@@ -86,8 +85,8 @@ class CourseCreationRepositoryTest {
   }
 
   @Test
-  @DisplayName("종료 시각으로 생성한 DRAFT와 지역·콘셉트 관계를 함께 저장한다")
-  void persistsDraftWithEndTime() {
+  @DisplayName("종료 시각 없이 생성한 DRAFT도 정상 저장된다")
+  void persistsDraftWithoutEndTime() {
     // given
     LocalDateTime start = LocalDateTime.of(2026, 12, 1, 10, 0);
     jdbc.update("insert into theme (theme_id, name) values (3, '감성적'), (4, '여유로움')");
@@ -98,7 +97,6 @@ class CourseCreationRepositoryTest {
             "종로 데이트",
             CourseTransport.WALKING,
             start,
-            start.plusHours(2),
             null,
             List.of(7, 8),
             themes,
@@ -111,25 +109,8 @@ class CourseCreationRepositoryTest {
     // then
     Map<String, Object> row = jdbc.queryForMap("select * from course where course_id = ?", id);
     assertThat(row.get("MEMBER_ID")).isEqualTo("member-1");
-    assertThat(row.get("STATUS")).isEqualTo("DRAFT");
-    assertThat(row.get("VISIBILITY")).isEqualTo("PRIVATE");
-    assertThat(row.get("VIEW_COUNT")).isEqualTo(0);
-    assertThat(row.get("COURSE_SUMMARY")).isNull();
-    assertThat(row.get("DURATION_MINUTES")).isNull();
-    assertThat(courses.findById(id).orElseThrow().getSnapshot().endAt())
-        .isEqualTo(start.plusHours(2));
-    assertThat(
-            jdbc.queryForList(
-                "select region_id from region_course where course_id = ?", Integer.class, id))
-        .containsExactlyInAnyOrder(7, 8);
-    assertThat(
-            jdbc.queryForList(
-                "select theme_id from course_theme where course_id = ?", Integer.class, id))
-        .containsExactlyInAnyOrder(3, 4);
-    assertThat(
-            jdbc.queryForObject(
-                "select count(*) from course_place where course_id = ?", Integer.class, id))
-        .isZero();
+    assertThat(row.get("END_AT")).isNull();
+    assertThat(courses.findById(id).orElseThrow().getSnapshot().endAt()).isNull();
   }
 
   @Test
@@ -137,14 +118,14 @@ class CourseCreationRepositoryTest {
   void rejectsMissingThemeReference() {
     // given
     LocalDateTime start = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime end = start.plusHours(4);
     Course course =
         Course.createDraft(
             "member-1",
             "종로 데이트",
             CourseTransport.WALKING,
             start,
-            null,
-            120,
+            end,
             List.of(),
             List.of(entities.getReference(Theme.class, 999)),
             start);

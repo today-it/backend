@@ -68,11 +68,11 @@ class CourseCommandServiceTest {
   private CreateCourseCommand command() {
     return new CreateCourseCommand(
         "코스",
-        "11110",
+        "11",
+        "110",
         List.of("감성적"),
         LocalDateTime.of(2026, 12, 1, 10, 0),
-        null,
-        120,
+        LocalDateTime.of(2026, 12, 1, 14, 0),
         CourseTransport.WALKING);
   }
 }

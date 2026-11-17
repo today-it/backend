@@ -32,9 +32,8 @@ public class CourseFacade {
    * @return 생성 결과
    */
   public CreateCourseResult createCourse(String memberId, CreateCourseCommand command) {
-    String sidoCode = command.region().substring(0, 2);
-    String sigunguCode = command.region().length() == 5 ? command.region().substring(2) : null;
-    List<Integer> regionIds = regionQueryService.findRegionIds(sidoCode, sigunguCode);
+    List<Integer> regionIds =
+        regionQueryService.findRegionIds(command.sidoCode(), command.sigunguCode());
     return courseCommandService.createCourse(memberId, command, regionIds);
   }
 }

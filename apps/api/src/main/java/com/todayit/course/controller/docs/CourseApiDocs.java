@@ -32,8 +32,8 @@ public interface CourseApiDocs {
       summary = "코스 생성",
       description =
           "로그인한 회원이 입력한 정보로 작성 중인 코스를 만듭니다. 생성한 코스는 비공개이며 상태는 DRAFT입니다. "
-              + "코스명, 지역, 콘셉트, 시작 시각, 이동수단은 필수이고, "
-              + "방문을 마칠 시각(endAt) 또는 코스 전체에 사용할 시간(durationMinutes, 분) 중 하나만 입력합니다. "
+              + "코스명, 시도 코드, 콘셉트, 시작 시각, 이동수단은 필수이고, "
+              + "시군구 코드(sigunguCode)와 종료 시각(endAt)은 선택입니다. "
               + "생성 직후에는 장소 목록이 비어 있고 요약 설명은 null입니다. "
               + "같은 요청을 다시 보내면 새로운 코스가 생성됩니다.",
       security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
@@ -68,7 +68,7 @@ public interface CourseApiDocs {
                       name = "지역 코드 형식 오류",
                       value =
                           """
-                      {"success":false,"code":"INVALID_COURSE_REGION","message":"지역은 시도 2자리 또는 시도·시군구 5자리 코드이어야 합니다."}
+                      {"success":false,"code":"INVALID_COURSE_REGION","message":"시도 코드는 2자리, 시군구 코드는 3자리이어야 합니다."}
                       """),
                   @ExampleObject(
                       name = "존재하지 않는 지역 코드",
@@ -95,28 +95,16 @@ public interface CourseApiDocs {
                       {"success":false,"code":"COURSE_START_AT_REQUIRED","message":"시작 시각은 필수입니다."}
                       """),
                   @ExampleObject(
-                      name = "이동수단 누락",
-                      value =
-                          """
-                      {"success":false,"code":"COURSE_TRANSPORT_REQUIRED","message":"이동수단은 필수입니다."}
-                      """),
-                  @ExampleObject(
-                      name = "종료 시각과 가용시간 동시 입력 또는 모두 누락",
-                      value =
-                          """
-                      {"success":false,"code":"INVALID_COURSE_TIME_CONDITION","message":"종료 시각과 가용시간 중 하나만 입력해야 합니다."}
-                      """),
-                  @ExampleObject(
                       name = "종료 시각이 시작 시각 이전이거나 동일",
                       value =
                           """
                       {"success":false,"code":"INVALID_COURSE_END_AT","message":"종료 시각은 시작 시각 이후이어야 합니다."}
                       """),
                   @ExampleObject(
-                      name = "가용시간이 0분 이하",
+                      name = "이동수단 누락",
                       value =
                           """
-                      {"success":false,"code":"INVALID_COURSE_DURATION","message":"가용시간은 1분 이상이어야 합니다."}
+                      {"success":false,"code":"COURSE_TRANSPORT_REQUIRED","message":"이동수단은 필수입니다."}
                       """),
                   @ExampleObject(
                       name = "JSON·날짜 형식 또는 이동수단 enum 오류",

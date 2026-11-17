@@ -34,10 +34,10 @@ class CourseFacadeTest {
         new CreateCourseCommand(
             "코스",
             "11",
+            null,
             List.of("감성적"),
             LocalDateTime.of(2026, 12, 1, 10, 0),
-            null,
-            120,
+            LocalDateTime.of(2026, 12, 1, 14, 0),
             CourseTransport.WALKING);
     CreateCourseResult expected =
         new CreateCourseResult(
@@ -59,11 +59,11 @@ class CourseFacadeTest {
     CreateCourseCommand command =
         new CreateCourseCommand(
             "코스",
-            "11110",
+            "11",
+            "110",
             List.of("감성적"),
             LocalDateTime.of(2026, 12, 1, 10, 0),
-            null,
-            120,
+            LocalDateTime.of(2026, 12, 1, 14, 0),
             CourseTransport.WALKING);
     CreateCourseResult expected =
         new CreateCourseResult(
@@ -85,11 +85,11 @@ class CourseFacadeTest {
     CreateCourseCommand command =
         new CreateCourseCommand(
             "코스",
-            "99999",
+            "99",
+            "999",
             List.of("감성적"),
             LocalDateTime.of(2026, 12, 1, 10, 0),
-            null,
-            120,
+            LocalDateTime.of(2026, 12, 1, 14, 0),
             CourseTransport.WALKING);
     when(regions.findRegionIds("99", "999")).thenThrow(new InvalidRegionPathException());
 
