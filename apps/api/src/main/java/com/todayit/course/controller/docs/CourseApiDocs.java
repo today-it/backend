@@ -178,14 +178,10 @@ public interface CourseApiDocs {
                         "status": "DRAFT",
                         "viewCount": 0,
                         "isWriter": true,
-                        "sido": {
-                          "code": "11",
-                          "name": "서울특별시"
-                        },
-                        "sigungu": {
-                          "code": "110",
-                          "name": "종로구"
-                        },
+                        "sidoCode": "11",
+                        "sidoName": "서울특별시",
+                        "sigunguCode": "110",
+                        "sigunguName": "종로구",
                         "themes": [
                           "감성적",
                           "여유로움"
