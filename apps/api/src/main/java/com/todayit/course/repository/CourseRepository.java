@@ -1,6 +1,8 @@
 package com.todayit.course.repository;
 
 import com.todayit.course.entity.Course;
+import com.todayit.course.entity.Theme;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +11,15 @@ import org.springframework.data.repository.query.Param;
 
 /** 코스 정보를 조회하고 저장하는 JPA Repository입니다. */
 public interface CourseRepository extends JpaRepository<Course, Integer> {
+  /**
+   * 선택한 콘셉트를 조회합니다.
+   *
+   * @param names 콘셉트 이름 목록
+   * @return 존재하는 콘셉트 목록
+   */
+  @Query("select theme from Theme theme where theme.name in :names")
+  List<Theme> findThemesByNames(@Param("names") List<String> names);
+
   /**
    * 공개 여부와 관계없이 해당 장소가 포함된 활성 코스에서 0분을 제외한 체류 시간 평균을 조회합니다.
    *

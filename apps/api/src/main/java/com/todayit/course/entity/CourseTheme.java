@@ -29,4 +29,9 @@ public class CourseTheme {
   private Theme theme;
 
   protected CourseTheme() {}
+
+  CourseTheme(Course course, Theme theme) {
+    this.course = course;
+    this.theme = theme;
+  }
 }

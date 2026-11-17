@@ -20,13 +20,17 @@ public class RegionCourse {
   @Column(name = "region_course_id", nullable = false)
   private int regionCourseId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "region_id", nullable = false)
-  private Region region;
+  @Column(name = "region_id", nullable = false)
+  private int regionId;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "course_id", nullable = false)
   private Course course;
 
   protected RegionCourse() {}
+
+  RegionCourse(Course course, int regionId) {
+    this.course = course;
+    this.regionId = regionId;
+  }
 }
