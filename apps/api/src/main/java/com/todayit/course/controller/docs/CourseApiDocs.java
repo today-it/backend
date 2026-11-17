@@ -192,7 +192,7 @@ public interface CourseApiDocs {
                             "placeId": 10,
                             "name": "블루보틀 삼청",
                             "category": "CAFE_DESSERT",
-                            "roadAddress": "서울특별시 종로구 북촌로 5길",
+                            "address": "서울특별시 종로구 북촌로 5길",
                             "latitude": 37.58123400,
                             "longitude": 126.98123400,
                             "imageUrl": "https://example.com/place.jpg",
