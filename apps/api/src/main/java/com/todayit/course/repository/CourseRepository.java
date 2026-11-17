@@ -2,15 +2,28 @@ package com.todayit.course.repository;
 
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.Theme;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /** 코스 정보를 조회하고 저장하는 JPA Repository입니다. */
 public interface CourseRepository extends JpaRepository<Course, Integer> {
+  /**
+   * 같은 코스의 장소 변경 요청을 직렬화하기 위해 코스 행을 잠그고 조회합니다.
+   *
+   * @param courseId 코스 식별자
+   * @return 코스, 존재하지 않으면 빈 Optional
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select course from Course course where course.courseId = :courseId")
+  Optional<Course> findByIdForUpdate(@Param("courseId") int courseId);
+
   /**
    * 선택한 콘셉트를 조회합니다.
    *

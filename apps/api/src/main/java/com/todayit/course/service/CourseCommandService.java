@@ -61,7 +61,7 @@ public class CourseCommandService {
   }
 
   /**
-   * 코스에 새 장소를 추가하고 저장합니다.
+   * 코스 행을 잠근 뒤 새 장소를 추가하고 저장합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 코스 장소 추가 조건
@@ -72,7 +72,9 @@ public class CourseCommandService {
   @Transactional
   public AddCoursePlaceResult addPlace(String memberId, AddCoursePlaceCommand command) {
     Course course =
-        courseRepository.findById(command.courseId()).orElseThrow(CourseNotFoundException::new);
+        courseRepository
+            .findByIdForUpdate(command.courseId())
+            .orElseThrow(CourseNotFoundException::new);
     if (!course.isWriter(memberId)
         || course.getDeletedAt() != null
         || course.getStatus() == CourseStatus.DELETED) {
@@ -103,7 +105,7 @@ public class CourseCommandService {
   }
 
   /**
-   * 코스 장소의 방문 순서를 일괄 변경합니다.
+   * 코스 행을 잠근 뒤 장소의 방문 순서를 일괄 변경합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 순서 변경 조건
@@ -112,7 +114,9 @@ public class CourseCommandService {
   @Transactional
   public void reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
     Course course =
-        courseRepository.findById(command.courseId()).orElseThrow(CourseNotFoundException::new);
+        courseRepository
+            .findByIdForUpdate(command.courseId())
+            .orElseThrow(CourseNotFoundException::new);
     if (!course.isWriter(memberId)
         || course.getDeletedAt() != null
         || course.getStatus() == CourseStatus.DELETED) {

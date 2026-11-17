@@ -83,7 +83,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
@@ -111,7 +111,7 @@ class CourseCommandServiceTest {
             List.of(),
             LocalDateTime.now());
     course.addPlace(10, null, 60);
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
@@ -141,7 +141,7 @@ class CourseCommandServiceTest {
             LocalDateTime.now());
     course.addPlace(10, null, 60);
     course.addPlace(10, null, 45);
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
 
     // when & then
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, null, 30);
@@ -164,7 +164,7 @@ class CourseCommandServiceTest {
             List.of(),
             LocalDateTime.now());
     course.addPlace(10, null, 60);
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
@@ -183,7 +183,7 @@ class CourseCommandServiceTest {
   @DisplayName("존재하지 않는 코스에 장소를 추가하려 하면 404 예외를 던진다")
   void rejectsWhenCourseNotFound() {
     // given
-    when(courses.findById(999)).thenReturn(Optional.empty());
+    when(courses.findByIdForUpdate(999)).thenReturn(Optional.empty());
 
     // when & then
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(999, 10, 1, 60);
@@ -204,7 +204,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
 
     // when & then
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, 1, 60);
@@ -239,7 +239,7 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(cp2, "coursePlaceId", 102);
 
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
 
     // when
     UpdateCoursePlaceOrdersCommand command =
@@ -257,7 +257,7 @@ class CourseCommandServiceTest {
   @DisplayName("순서 변경 시 코스가 존재하지 않으면 404 예외를 던진다")
   void rejectsReorderWhenCourseNotFound() {
     // given
-    when(courses.findById(999)).thenReturn(Optional.empty());
+    when(courses.findByIdForUpdate(999)).thenReturn(Optional.empty());
 
     // when & then
     UpdateCoursePlaceOrdersCommand command = new UpdateCoursePlaceOrdersCommand(999, List.of(1, 2));
@@ -278,7 +278,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
 
     // when & then
     UpdateCoursePlaceOrdersCommand command = new UpdateCoursePlaceOrdersCommand(1, List.of(1, 2));
@@ -301,7 +301,7 @@ class CourseCommandServiceTest {
             LocalDateTime.now());
     CoursePlace cp1 = course.addPlace(10, null, 60);
     ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
-    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courses.findByIdForUpdate(1)).thenReturn(Optional.of(course));
 
     // when & then
     UpdateCoursePlaceOrdersCommand command = new UpdateCoursePlaceOrdersCommand(1, List.of(999));
