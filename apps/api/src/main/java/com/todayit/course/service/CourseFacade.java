@@ -4,7 +4,10 @@ import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.PlaceNotFoundException;
+import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
@@ -54,6 +57,23 @@ public class CourseFacade {
    */
   public CreateCourseResult createCourse(String memberId, CreateCourseCommand command) {
     return courseCommandService.createCourse(memberId, command);
+  }
+
+  /**
+   * 코스에 새 장소를 추가합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param command 코스 장소 추가 조건
+   * @return 추가 결과
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws PlaceNotFoundException 장소가 존재하지 않거나 비활성화/삭제된 경우
+   */
+  @Transactional
+  public AddCoursePlaceResult addPlaceToCourse(String memberId, AddCoursePlaceCommand command) {
+    if (!placeCourseQueryService.existsActivePlace(command.placeId())) {
+      throw new PlaceNotFoundException();
+    }
+    return courseCommandService.addPlace(memberId, command);
   }
 
   /**

@@ -9,7 +9,10 @@ import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.PlaceNotFoundException;
+import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
@@ -26,7 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("코스 생성 및 상세 조회 Facade")
+@DisplayName("코스 생성, 상세 조회 및 장소 편집 Facade")
 class CourseFacadeTest {
   @Mock private RegionQueryService regions;
   @Mock private CourseCommandService courses;
@@ -53,6 +56,34 @@ class CourseFacadeTest {
 
     // then
     assertThat(result).isEqualTo(expected);
+  }
+
+  @Test
+  @DisplayName("활성화된 장소를 코스에 정상적으로 추가한다")
+  void addsPlaceToCourseSuccessfully() {
+    // given
+    AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, 1, 60);
+    AddCoursePlaceResult expected = new AddCoursePlaceResult(100, 10, 1, 60);
+    when(placeCourseQueryService.existsActivePlace(10)).thenReturn(true);
+    when(courses.addPlace("member-1", command)).thenReturn(expected);
+
+    // when
+    AddCoursePlaceResult result = facade.addPlaceToCourse("member-1", command);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 비활성화된 장소는 코스에 추가할 수 없다")
+  void rejectsWhenPlaceDoesNotExist() {
+    // given
+    AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 999, 1, 60);
+    when(placeCourseQueryService.existsActivePlace(999)).thenReturn(false);
+
+    // when & then
+    assertThrows(PlaceNotFoundException.class, () -> facade.addPlaceToCourse("member-1", command));
+    verifyNoInteractions(courses);
   }
 
   @Test

@@ -17,8 +17,11 @@ import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.CourseFacade;
+import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
@@ -720,5 +723,188 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"))
         .andExpect(jsonPath("$.message").value("코스를 찾을 수 없습니다."));
+  }
+
+  @Test
+  @DisplayName("코스에 장소를 정상 추가하고 201과 코스 장소 정보를 반환한다")
+  void addsPlaceToCourseSuccessfully() throws Exception {
+    // given
+    when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
+        .thenReturn(new AddCoursePlaceResult(1, 10, 1, 60));
+    String request =
+        """
+        {
+          "placeId": 10,
+          "order": 1,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.coursePlaceId").value(1))
+        .andExpect(jsonPath("$.data.placeId").value(10))
+        .andExpect(jsonPath("$.data.order").value(1))
+        .andExpect(jsonPath("$.data.stayMinute").value(60));
+    verify(courseFacade).addPlaceToCourse("member-1", new AddCoursePlaceCommand(1, 10, 1, 60));
+  }
+
+  @Test
+  @DisplayName("장소 식별자가 없으면 400과 INVALID_PLACE_ID를 반환한다")
+  void rejectsMissingPlaceId() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "placeId": null,
+          "order": 1,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_PLACE_ID"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("방문 순서가 1 미만이면 400과 INVALID_COURSE_PLACE_ORDER를 반환한다")
+  void rejectsInvalidOrder() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "placeId": 10,
+          "order": 0,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_PLACE_ORDER"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("체류 시간이 음수이거나 1440분 초과이면 400과 INVALID_STAY_MINUTE를 반환한다")
+  void rejectsInvalidStayMinute() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "placeId": 10,
+          "order": 1,
+          "stayMinute": -1
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_STAY_MINUTE"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("코스가 존재하지 않거나 작성자가 아니면 404와 COURSE_NOT_FOUND를 반환한다")
+  void returnsNotFoundWhenCourseDoesNotExistOrNotWriter() throws Exception {
+    // given
+    when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
+        .thenThrow(new CourseNotFoundException());
+    String request =
+        """
+        {
+          "placeId": 10,
+          "order": 1,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/99/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"))
+        .andExpect(jsonPath("$.message").value("코스를 찾을 수 없습니다."));
+  }
+
+  @Test
+  @DisplayName("추가하려는 장소가 존재하지 않거나 삭제되었으면 404와 PLACE_NOT_FOUND를 반환한다")
+  void returnsNotFoundWhenPlaceDoesNotExist() throws Exception {
+    // given
+    when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
+        .thenThrow(new PlaceNotFoundException());
+    String request =
+        """
+        {
+          "placeId": 999,
+          "order": 1,
+          "stayMinute": 60
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/places")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"))
+        .andExpect(jsonPath("$.message").value("장소를 찾을 수 없습니다."));
   }
 }

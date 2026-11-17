@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.todayit.course.entity.Course;
+import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.Theme;
 import jakarta.persistence.EntityManager;
@@ -125,5 +126,36 @@ class CourseCreationRepositoryTest {
 
     // then
     assertThat(exception.getCause()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("코스에 장소를 추가하고 저장하면 coursePlaceId가 정상 생성된다")
+  void persistsCoursePlacesWithGeneratedId() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "종로 데이트",
+            CourseTransport.WALKING,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    course = courses.saveAndFlush(course);
+
+    // when
+    course.addPlace(10, null, 60);
+    Course savedCourse = courses.saveAndFlush(course);
+    CoursePlace savedPlace =
+        savedCourse.getCoursePlaces().stream()
+            .filter(cp -> cp.getOrder() == 1)
+            .findFirst()
+            .orElseThrow();
+
+    // then
+    assertThat(savedPlace.getCoursePlaceId()).isPositive();
+    assertThat(savedPlace.getPlaceId()).isEqualTo(10);
+    assertThat(savedPlace.getOrder()).isEqualTo(1);
+    assertThat(savedPlace.getStayMinute()).isEqualTo(60);
   }
 }

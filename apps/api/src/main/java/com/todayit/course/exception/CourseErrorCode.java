@@ -27,7 +27,19 @@ public enum CourseErrorCode implements ErrorCode {
   TRANSPORT_REQUIRED("COURSE_TRANSPORT_REQUIRED", "이동수단은 필수입니다."),
 
   /** 요청한 코스가 존재하지 않거나 비공개 코스에 접근할 권한이 없는 경우입니다. */
-  NOT_FOUND("COURSE_NOT_FOUND", "코스를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND);
+  NOT_FOUND("COURSE_NOT_FOUND", "코스를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND),
+
+  /** 코스에 추가하려는 장소를 찾을 수 없거나 삭제된 경우입니다. */
+  PLACE_NOT_FOUND("PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND),
+
+  /** 장소 식별자가 누락되었거나 유효하지 않은 경우입니다. */
+  INVALID_PLACE_ID("INVALID_PLACE_ID", "장소 식별자는 1 이상이어야 합니다."),
+
+  /** 방문 순서가 유효하지 않은 경우입니다. */
+  INVALID_ORDER("INVALID_COURSE_PLACE_ORDER", "방문 순서는 1 이상이어야 합니다."),
+
+  /** 체류 시간이 유효 범위를 벗어난 경우입니다. */
+  INVALID_STAY_MINUTE("INVALID_STAY_MINUTE", "체류 시간은 0분 이상 1440분 이하이어야 합니다.");
 
   private final String code;
   private final String message;

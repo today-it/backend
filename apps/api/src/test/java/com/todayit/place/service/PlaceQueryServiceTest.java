@@ -455,4 +455,44 @@ class PlaceQueryServiceTest {
     assertThat(service.findPlacesByIds(null)).isEmpty();
     assertThat(service.findPlacesByIds(List.of())).isEmpty();
   }
+
+  @Test
+  @DisplayName("활성화된 장소가 존재하면 true를 반환한다")
+  void returnsTrueWhenActivePlaceExists() {
+    // given
+    when(placeRepository.existsByPlaceIdAndIsActiveTrueAndIsDeletedFalse(10)).thenReturn(true);
+    PlaceQueryService service =
+        new PlaceQueryService(
+            placeMemberLikeRepository,
+            placeRepository,
+            placeImageRepository,
+            placeScrapRepository,
+            regionPlaceQueryService);
+
+    // when
+    boolean exists = service.existsActivePlace(10);
+
+    // then
+    assertThat(exists).isTrue();
+  }
+
+  @Test
+  @DisplayName("활성화된 장소가 존재하지 않으면 false를 반환한다")
+  void returnsFalseWhenPlaceNotFound() {
+    // given
+    when(placeRepository.existsByPlaceIdAndIsActiveTrueAndIsDeletedFalse(999)).thenReturn(false);
+    PlaceQueryService service =
+        new PlaceQueryService(
+            placeMemberLikeRepository,
+            placeRepository,
+            placeImageRepository,
+            placeScrapRepository,
+            regionPlaceQueryService);
+
+    // when
+    boolean exists = service.existsActivePlace(999);
+
+    // then
+    assertThat(exists).isFalse();
+  }
 }

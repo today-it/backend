@@ -3,7 +3,9 @@ package com.todayit.course.controller.docs;
 import com.todayit.common.openapi.OpenApiConfig;
 import com.todayit.common.response.CommonResponse;
 import com.todayit.common.response.ErrorResponse;
+import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
+import com.todayit.course.dto.response.AddCoursePlaceResponse;
 import com.todayit.course.dto.response.CourseDetailResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -115,7 +117,18 @@ public interface CourseApiDocs {
                         value =
                             """
                     {"success":false,"code":"AUTHENTICATION_REQUIRED","message":"인증이 필요합니다."}
-                    """)))
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
   })
   ResponseEntity<CommonResponse<CreateCourseResponse>> createCourse(
       CreateCourseRequest request, Authentication authentication);
@@ -196,9 +209,137 @@ public interface CourseApiDocs {
                         value =
                             """
                     {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
-                    """)))
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
   })
   ResponseEntity<CommonResponse<CourseDetailResponse>> getCourseDetail(
       @Parameter(description = "조회할 코스 식별자입니다.", example = "1", required = true) int courseId,
+      @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 코스에 새 장소를 추가합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 추가할 장소 정보
+   * @param authentication 인증된 작성자 정보
+   * @return 추가된 코스 장소 정보
+   */
+  @Operation(
+      summary = "코스 장소 추가",
+      description =
+          "작성 중인 코스에 새로운 장소를 추가합니다. 작성자 본인만 추가할 수 있습니다. "
+              + "방문 순서(order)를 생략하면 현재 코스의 마지막 순서 다음으로 자동 지정되며, "
+              + "체류 시간(stayMinute)을 생략하면 기본값 0분으로 저장됩니다. "
+              + "존재하지 않거나 삭제된 코스, 또는 타인의 코스인 경우 404를 반환합니다. "
+              + "존재하지 않거나 삭제된 장소인 경우 404를 반환합니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "코스 장소 추가 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": {
+                        "coursePlaceId": 1,
+                        "placeId": 10,
+                        "order": 1,
+                        "stayMinute": 60
+                      }
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "입력값 유효성 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "장소 식별자 누락 또는 유효하지 않음",
+                      value =
+                          """
+                      {"success":false,"code":"INVALID_PLACE_ID","message":"장소 식별자는 1 이상이어야 합니다."}
+                      """),
+                  @ExampleObject(
+                      name = "방문 순서 오류 (1 미만)",
+                      value =
+                          """
+                      {"success":false,"code":"INVALID_COURSE_PLACE_ORDER","message":"방문 순서는 1 이상이어야 합니다."}
+                      """),
+                  @ExampleObject(
+                      name = "체류 시간 오류 (음수 또는 1440분 초과)",
+                      value =
+                          """
+                      {"success":false,"code":"INVALID_STAY_MINUTE","message":"체류 시간은 0분 이상 1440분 이하이어야 합니다."}
+                      """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 정보 누락, 유효하지 않은 토큰 또는 만료된 로그인 세션",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "인증 필요",
+                        value =
+                            """
+                    {"success":false,"code":"AUTHENTICATION_REQUIRED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스 또는 장소를 찾을 수 없음",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "코스를 찾을 수 없거나 작성자가 아님",
+                      value =
+                          """
+                      {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                      """),
+                  @ExampleObject(
+                      name = "추가하려는 장소를 찾을 수 없음",
+                      value =
+                          """
+                      {"success":false,"code":"PLACE_NOT_FOUND","message":"장소를 찾을 수 없습니다."}
+                      """)
+                })),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<AddCoursePlaceResponse>> addCoursePlace(
+      @Parameter(description = "장소를 추가할 코스 식별자입니다.", example = "1", required = true) int courseId,
+      AddCoursePlaceRequest request,
       @Parameter(hidden = true) Authentication authentication);
 }

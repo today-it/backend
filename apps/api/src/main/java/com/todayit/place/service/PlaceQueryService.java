@@ -267,6 +267,13 @@ public class PlaceQueryService implements PlaceScrapQueryService, PlaceCourseQue
                 LinkedHashMap::new));
   }
 
+  /** {@inheritDoc} */
+  @Override
+  @Transactional(readOnly = true)
+  public boolean existsActivePlace(int placeId) {
+    return placeRepository.existsByPlaceIdAndIsActiveTrueAndIsDeletedFalse(placeId);
+  }
+
   /**
    * 코스 등 장소를 참조하는 기능에서 장소가 조회 가능한 상태인지 검증합니다.
    *

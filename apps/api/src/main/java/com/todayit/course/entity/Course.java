@@ -289,6 +289,54 @@ public class Course {
   }
 
   /**
+   * 새 장소를 추가하기 위해 순서를 뒤로 밀어야 하는 대상 목록을 음수 임시 순서로 변경합니다.
+   *
+   * @param targetOrder 추가하려는 순서
+   * @return 임시 순서로 변경된 장소 목록
+   */
+  public List<CoursePlace> shiftOrdersToNegative(int targetOrder) {
+    int maxOrder = coursePlaces.stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
+    if (targetOrder > maxOrder) {
+      return List.of();
+    }
+    int assignedOrder = Math.max(1, targetOrder);
+    List<CoursePlace> targets =
+        coursePlaces.stream().filter(cp -> cp.getOrder() >= assignedOrder).toList();
+    for (CoursePlace cp : targets) {
+      cp.setOrder(-cp.getOrder());
+    }
+    return targets;
+  }
+
+  /**
+   * 음수 임시 순서로 변경된 장소들의 순서를 1씩 밀린 양수로 복원합니다.
+   *
+   * @param shiftedPlaces 임시 음수 순서로 변경된 장소 목록
+   */
+  public void restoreShiftedOrders(List<CoursePlace> shiftedPlaces) {
+    for (CoursePlace cp : shiftedPlaces) {
+      cp.setOrder(-cp.getOrder() + 1);
+    }
+  }
+
+  /**
+   * 코스에 새 장소를 추가합니다.
+   *
+   * @param placeId 추가할 장소 식별자
+   * @param targetOrder 지정할 방문 순서, null이면 맨 뒤에 추가
+   * @param stayMinute 체류 시간(분)
+   * @return 생성된 CoursePlace 엔티티
+   */
+  public CoursePlace addPlace(int placeId, Integer targetOrder, int stayMinute) {
+    int maxOrder = coursePlaces.stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
+    int assignedOrder =
+        (targetOrder == null || targetOrder > maxOrder) ? maxOrder + 1 : Math.max(1, targetOrder);
+    CoursePlace newCoursePlace = new CoursePlace(this, placeId, assignedOrder, stayMinute);
+    this.coursePlaces.add(newCoursePlace);
+    return newCoursePlace;
+  }
+
+  /**
    * 코스에 지역 관계를 추가합니다.
    *
    * @param regionId 연결할 지역 식별자

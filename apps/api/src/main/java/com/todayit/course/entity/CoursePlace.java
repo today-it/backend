@@ -84,11 +84,29 @@ public class CoursePlace {
   }
 
   /**
+   * 방문 순서를 변경합니다.
+   *
+   * @param order 새로운 방문 순서
+   */
+  public void setOrder(int order) {
+    this.order = order;
+  }
+
+  /**
    * 체류 시간(분)을 반환합니다.
    *
    * @return 체류 시간(분)
    */
   public int getStayMinute() {
     return stayMinute;
+  }
+
+  /**
+   * 체류 시간(분)을 변경합니다.
+   *
+   * @param stayMinute 새로운 체류 시간(분)
+   */
+  public void setStayMinute(int stayMinute) {
+    this.stayMinute = stayMinute;
   }
 }
