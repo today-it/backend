@@ -56,56 +56,26 @@ public class CoursePlace {
     this.stayMinute = stayMinute;
   }
 
-  /**
-   * 코스 장소 관계 식별자를 반환합니다.
-   *
-   * @return 코스 장소 식별자
-   */
   public int getCoursePlaceId() {
     return coursePlaceId;
   }
 
-  /**
-   * 장소 식별자를 반환합니다.
-   *
-   * @return 장소 식별자
-   */
   public int getPlaceId() {
     return placeId;
   }
 
-  /**
-   * 방문 순서를 반환합니다.
-   *
-   * @return 방문 순서
-   */
   public int getOrder() {
     return order;
   }
 
-  /**
-   * 방문 순서를 변경합니다.
-   *
-   * @param order 새로운 방문 순서
-   */
   public void setOrder(int order) {
     this.order = order;
   }
 
-  /**
-   * 체류 시간(분)을 반환합니다.
-   *
-   * @return 체류 시간(분)
-   */
   public int getStayMinute() {
     return stayMinute;
   }
 
-  /**
-   * 체류 시간(분)을 변경합니다.
-   *
-   * @param stayMinute 새로운 체류 시간(분)
-   */
   public void setStayMinute(int stayMinute) {
     this.stayMinute = stayMinute;
   }

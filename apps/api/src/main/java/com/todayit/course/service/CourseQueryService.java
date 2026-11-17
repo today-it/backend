@@ -24,11 +24,14 @@ public class CourseQueryService implements CoursePlaceQueryService {
   private final CourseRepository courseRepository;
 
   /**
-   * 공개 여부와 관계없이 해당 장소가 포함된 활성 코스에서 0분을 제외한 체류 시간을 평균 내어 분 단위 정수로 반올림합니다.
+   * 코스 조회에 필요한 Repository를 받습니다.
    *
-   * @param placeId 장소 식별자
-   * @return 평균 체류 시간(분), 0분을 제외한 체류 시간이 없으면 0
+   * @param courseRepository 코스 Repository
    */
+  public CourseQueryService(CourseRepository courseRepository) {
+    this.courseRepository = courseRepository;
+  }
+
   /**
    * 코스 식별자로 코스를 조회합니다.
    *
@@ -45,20 +48,17 @@ public class CourseQueryService implements CoursePlaceQueryService {
     return course;
   }
 
+  /**
+   * 공개 여부와 관계없이 해당 장소가 포함된 활성 코스에서 0분을 제외한 체류 시간을 평균 내어 분 단위 정수로 반올림합니다.
+   *
+   * @param placeId 장소 식별자
+   * @return 평균 체류 시간(분), 0분을 제외한 체류 시간이 없으면 0
+   */
   @Override
   @Transactional(readOnly = true)
   public long getAverageStayMinutes(int placeId) {
     Double average = courseRepository.findAverageStayMinutes(placeId);
     return average == null ? 0 : Math.round(average);
-  }
-
-  /**
-   * 코스 조회에 필요한 Repository를 받습니다.
-   *
-   * @param courseRepository 코스 Repository
-   */
-  public CourseQueryService(CourseRepository courseRepository) {
-    this.courseRepository = courseRepository;
   }
 
   /**

@@ -38,6 +38,13 @@ public class CourseController implements CourseApiDocs {
     this.courseFacade = courseFacade;
   }
 
+  /**
+   * 새로운 코스를 DRAFT 상태로 생성합니다.
+   *
+   * @param request 코스 생성 요청 본문
+   * @param authentication 인증된 회원 정보
+   * @return 생성된 코스 식별자
+   */
   @Override
   @PostMapping
   public ResponseEntity<CommonResponse<CreateCourseResponse>> createCourse(
@@ -50,6 +57,13 @@ public class CourseController implements CourseApiDocs {
                     courseFacade.createCourse(authentication.getName(), request.toCommand()))));
   }
 
+  /**
+   * 코스 식별자로 코스 상세 정보를 조회합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param authentication 선택 인증 정보
+   * @return 코스 상세 정보
+   */
   @Override
   @GetMapping("/{courseId}")
   public ResponseEntity<CommonResponse<CourseDetailResponse>> getCourseDetail(
@@ -60,6 +74,14 @@ public class CourseController implements CourseApiDocs {
             CourseDetailResponse.from(courseFacade.getCourseDetail(courseId, memberId))));
   }
 
+  /**
+   * 코스에 새 장소를 추가합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 추가할 장소 정보
+   * @param authentication 인증된 작성자 정보
+   * @return 추가된 코스 장소 정보
+   */
   @Override
   @PostMapping("/{courseId}/places")
   public ResponseEntity<CommonResponse<AddCoursePlaceResponse>> addCoursePlace(
@@ -80,6 +102,14 @@ public class CourseController implements CourseApiDocs {
                             request.resolveStayMinute())))));
   }
 
+  /**
+   * 코스 장소들의 방문 순서를 일괄 변경합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 새로운 코스 장소 식별자 순서 목록
+   * @param authentication 인증된 작성자 정보
+   * @return 처리 성공 여부
+   */
   @Override
   @PatchMapping("/{courseId}/places/order")
   public ResponseEntity<CommonResponse<Void>> updateCoursePlaceOrders(

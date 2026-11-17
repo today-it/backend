@@ -146,146 +146,66 @@ public class Course {
     return accessorMemberId != null && memberId.equals(accessorMemberId);
   }
 
-  /**
-   * 코스 식별자를 반환합니다.
-   *
-   * @return 코스 식별자
-   */
   public int getCourseId() {
     return courseId;
   }
 
-  /**
-   * 작성자 회원 식별자를 반환합니다.
-   *
-   * @return 작성자 회원 식별자
-   */
   public String getMemberId() {
     return memberId;
   }
 
-  /**
-   * 코스명을 반환합니다.
-   *
-   * @return 코스명
-   */
   public String getTitle() {
     return title;
   }
 
-  /**
-   * 코스 요약을 반환합니다.
-   *
-   * @return 코스 요약, 없으면 null
-   */
   public String getCourseSummary() {
     return courseSummary;
   }
 
-  /**
-   * 이동수단을 반환합니다.
-   *
-   * @return 이동수단
-   */
   public CourseTransport getTransport() {
     return transport;
   }
 
-  /**
-   * 방문 시작 시각을 반환합니다.
-   *
-   * @return 방문 시작 시각
-   */
   public LocalDateTime getStartAt() {
     return startAt;
   }
 
-  /**
-   * 방문 종료 시각을 반환합니다.
-   *
-   * @return 방문 종료 시각, 없으면 null
-   */
   public LocalDateTime getEndAt() {
     return endAt;
   }
 
-  /**
-   * 코스 상태를 반환합니다.
-   *
-   * @return 코스 상태
-   */
   public CourseStatus getStatus() {
     return status;
   }
 
-  /**
-   * 공개 여부를 반환합니다.
-   *
-   * @return 공개 여부
-   */
   public CourseVisibility getVisibility() {
     return visibility;
   }
 
-  /**
-   * 조회수를 반환합니다.
-   *
-   * @return 조회수
-   */
   public int getViewCount() {
     return viewCount;
   }
 
-  /**
-   * 생성 일시를 반환합니다.
-   *
-   * @return 생성 일시
-   */
   public LocalDateTime getCreatedAt() {
     return createdAt;
   }
 
-  /**
-   * 수정 일시를 반환합니다.
-   *
-   * @return 수정 일시, 없으면 null
-   */
   public LocalDateTime getUpdatedAt() {
     return updatedAt;
   }
 
-  /**
-   * 삭제 일시를 반환합니다.
-   *
-   * @return 삭제 일시, 없으면 null
-   */
   public LocalDateTime getDeletedAt() {
     return deletedAt;
   }
 
-  /**
-   * 코스에 포함된 지역 관계 목록을 불변 리스트로 반환합니다.
-   *
-   * @return 지역 관계 목록
-   */
   public List<RegionCourse> getRegions() {
     return Collections.unmodifiableList(regions);
   }
 
-  /**
-   * 코스에 연결된 테마 관계 목록을 불변 리스트로 반환합니다.
-   *
-   * @return 테마 관계 목록
-   */
   public List<CourseTheme> getThemes() {
     return Collections.unmodifiableList(themes);
   }
 
-  /**
-   * 코스에 포함된 장소 목록을 불변 리스트로 반환합니다.
-   *
-   * @return 장소 목록
-   */
   public List<CoursePlace> getCoursePlaces() {
     return Collections.unmodifiableList(coursePlaces);
   }
