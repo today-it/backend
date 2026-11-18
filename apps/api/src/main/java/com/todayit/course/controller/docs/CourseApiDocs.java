@@ -176,6 +176,7 @@ public interface CourseApiDocs {
                         "startAt": "2026-12-01T10:00:00",
                         "endAt": "2026-12-01T18:00:00",
                         "status": "DRAFT",
+                        "visibility": "PRIVATE",
                         "viewCount": 0,
                         "isWriter": true,
                         "sidoCode": "11",
@@ -199,7 +200,8 @@ public interface CourseApiDocs {
                             "order": 1,
                             "stayMinute": 60
                           }
-                        ]
+                        ],
+                        "createdAt": "2026-11-17T12:00:00"
                       }
                     }
                     """))),
