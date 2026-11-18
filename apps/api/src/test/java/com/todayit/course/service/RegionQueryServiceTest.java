@@ -2,6 +2,9 @@ package com.todayit.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -242,6 +245,36 @@ class RegionQueryServiceTest {
 
     // Then
     assertThat(result).containsExactly(1, 2, 10, 11);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"190", "190:192"})
+  @DisplayName("부천시 선택 시 하위 구를 포함하고 중복 선택한 구는 한 번만 반환한다")
+  void includesSubRegionsWhenCitySelected(String codes) {
+    List<String> selectedCodes = List.of(codes.split(":"));
+    Region city = new Region(10, "41", "190", "경기도", "부천시");
+    Region wonmi = new Region(11, "41", "192", "경기도", "부천시 원미구");
+    when(regionRepository.findBySidoCodeAndSigunguCodeIn("41", selectedCodes))
+        .thenReturn(selectedCodes.size() == 1 ? List.of(city) : List.of(city, wonmi));
+    when(regionRepository.findSubRegionIds("41", "부천시")).thenReturn(List.of(11, 12, 13));
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    List<Integer> result = service.findRegionIds(List.of(new RegionFilter("41", selectedCodes)));
+
+    assertThat(result).containsExactly(10, 11, 12, 13);
+  }
+
+  @Test
+  @DisplayName("하위 구만 선택하면 상위 시나 다른 구를 포함하지 않는다")
+  void keepsSelectedDistrictOnly() {
+    when(regionRepository.findBySidoCodeAndSigunguCodeIn("41", List.of("192")))
+        .thenReturn(List.of(new Region(11, "41", "192", "경기도", "부천시 원미구")));
+    RegionQueryService service = new RegionQueryService(regionRepository);
+
+    List<Integer> result = service.findRegionIds(List.of(new RegionFilter("41", List.of("192"))));
+
+    assertThat(result).containsExactly(11);
+    verify(regionRepository, never()).findSubRegionIds(anyString(), anyString());
   }
 
   @Test
