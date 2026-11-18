@@ -38,9 +38,9 @@ public interface CourseApiDocs {
       description =
           "새로운 코스를 DRAFT 상태의 비공개 코스로 생성합니다. "
               + "로그인한 회원만 생성할 수 있습니다. "
-              + "제목은 1~100자, 이동수단은 필수(WALKING, PUBLIC_TRANSPORT, CAR), "
+              + "제목은 1–100자, 이동수단은 필수(WALKING, PUBLIC_TRANSPORT, CAR), "
               + "시작 시각(startAt)은 필수(ISO 8601), 종료 시각(endAt)은 선택이며 시작 시각 이후이어야 합니다. "
-              + "콘셉트(themes)는 중복 없이 1~2개 필수 선택입니다.",
+              + "콘셉트(themes)는 중복 없이 1–2개 필수 선택입니다.",
       security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
   @ApiResponses({
     @ApiResponse(
