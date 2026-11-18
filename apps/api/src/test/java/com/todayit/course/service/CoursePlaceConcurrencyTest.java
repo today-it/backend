@@ -1,9 +1,12 @@
 package com.todayit.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
+import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,6 +24,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -191,6 +196,47 @@ class CoursePlaceConcurrencyTest {
                   firstPlaceId))
           .isEqualTo(2);
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @DisplayName("타인의 장소 추가와 순서 변경은 작성자의 행 잠금을 기다리지 않고 거부된다")
+  void rejectsNonWriterWithoutWaitingForOwnerLock(boolean reorder) throws Exception {
+    try (ExecutorService executor = Executors.newSingleThreadExecutor();
+        Connection blocker = dataSource.getConnection()) {
+      blocker.setAutoCommit(false);
+      try {
+        try (PreparedStatement lock =
+            blocker.prepareStatement(
+                "select course_id from course where course_id = ? for update")) {
+          lock.setInt(1, courseId);
+          lock.executeQuery().close();
+        }
+
+        Future<?> request =
+            executor.submit(
+                () -> {
+                  if (reorder) {
+                    service.reorderPlaces(
+                        "other-member", new UpdateCoursePlaceOrdersCommand(courseId, List.of(1)));
+                  } else {
+                    service.addPlace(
+                        "other-member",
+                        new AddCoursePlaceCommand(courseId, firstPlaceId, null, 30));
+                  }
+                });
+
+        ExecutionException exception =
+            assertThrows(ExecutionException.class, () -> request.get(5, TimeUnit.SECONDS));
+        assertThat(exception.getCause()).isInstanceOf(CourseNotFoundException.class);
+      } finally {
+        blocker.rollback();
+      }
+    }
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from course_place where course_id = ?", Integer.class, courseId))
+        .isZero();
   }
 
   private void awaitBlockedRequests() throws InterruptedException {

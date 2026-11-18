@@ -73,7 +73,7 @@ public class CourseCommandService {
   public AddCoursePlaceResult addPlace(String memberId, AddCoursePlaceCommand command) {
     Course course =
         courseRepository
-            .findByIdForUpdate(command.courseId())
+            .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
             .orElseThrow(CourseNotFoundException::new);
     if (!course.isWriter(memberId)
         || course.getDeletedAt() != null
@@ -115,7 +115,7 @@ public class CourseCommandService {
   public void reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
     Course course =
         courseRepository
-            .findByIdForUpdate(command.courseId())
+            .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
             .orElseThrow(CourseNotFoundException::new);
     if (!course.isWriter(memberId)
         || course.getDeletedAt() != null

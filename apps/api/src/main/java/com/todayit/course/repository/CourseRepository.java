@@ -15,14 +15,18 @@ import org.springframework.data.repository.query.Param;
 /** 코스 정보를 조회하고 저장하는 JPA Repository입니다. */
 public interface CourseRepository extends JpaRepository<Course, Integer> {
   /**
-   * 같은 코스의 장소 변경 요청을 직렬화하기 위해 코스 행을 잠그고 조회합니다.
+   * 작성자의 장소 변경 요청을 직렬화하기 위해 작성자가 일치하는 코스 행만 잠그고 조회합니다.
    *
    * @param courseId 코스 식별자
-   * @return 코스, 존재하지 않으면 빈 Optional
+   * @param memberId 인증된 작성자 식별자
+   * @return 코스, 존재하지 않거나 작성자가 아니면 빈 Optional
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("select course from Course course where course.courseId = :courseId")
-  Optional<Course> findByIdForUpdate(@Param("courseId") int courseId);
+  @Query(
+      "select course from Course course "
+          + "where course.courseId = :courseId and course.memberId = :memberId")
+  Optional<Course> findByIdAndMemberIdForUpdate(
+      @Param("courseId") int courseId, @Param("memberId") String memberId);
 
   /**
    * 선택한 콘셉트를 조회합니다.
