@@ -104,7 +104,7 @@ class CoursePlaceConcurrencyTest {
           executor.submit(
               () -> {
                 ready.countDown();
-                start.await();
+                assertThat(start.await(15, TimeUnit.SECONDS)).as("동시 요청 시작 신호").isTrue();
                 return service.addPlace(
                     memberId, new AddCoursePlaceCommand(courseId, firstPlaceId, null, 30));
               });
@@ -112,14 +112,13 @@ class CoursePlaceConcurrencyTest {
           executor.submit(
               () -> {
                 ready.countDown();
-                start.await();
+                assertThat(start.await(15, TimeUnit.SECONDS)).as("동시 요청 시작 신호").isTrue();
                 return service.addPlace(
                     memberId, new AddCoursePlaceCommand(courseId, secondPlaceId, null, 30));
               });
-      assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+      awaitReadyAndStart(ready, start, List.of(first, second));
 
       // when
-      start.countDown();
       awaitBlockedRequests();
       blocker.commit();
       AddCoursePlaceResult firstResult = first.get(30, TimeUnit.SECONDS);
@@ -162,15 +161,14 @@ class CoursePlaceConcurrencyTest {
             executor.submit(
                 () -> {
                   ready.countDown();
-                  start.await();
+                  assertThat(start.await(15, TimeUnit.SECONDS)).as("동시 요청 시작 신호").isTrue();
                   return service.addPlace(
                       memberId, new AddCoursePlaceCommand(courseId, firstPlaceId, null, 30));
                 }));
       }
-      assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+      awaitReadyAndStart(ready, start, attempts);
 
       // when
-      start.countDown();
       awaitBlockedRequests();
       blocker.commit();
       List<AddCoursePlaceResult> successes = new ArrayList<>();
@@ -237,6 +235,42 @@ class CoursePlaceConcurrencyTest {
             jdbc.queryForObject(
                 "select count(*) from course_place where course_id = ?", Integer.class, courseId))
         .isZero();
+  }
+
+  @Test
+  @DisplayName("준비 시간 초과 시 시작 대기 중인 작업을 취소하고 시작 신호를 보내지 않는다")
+  void cancelsWaitingTaskWhenPreparationTimesOut() throws Exception {
+    CountDownLatch ready = new CountDownLatch(2);
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+      Future<?> waiting =
+          executor.submit(
+              () -> {
+                ready.countDown();
+                assertThat(start.await(15, TimeUnit.SECONDS)).isTrue();
+                return null;
+              });
+
+      assertThrows(AssertionError.class, () -> awaitReadyAndStart(ready, start, List.of(waiting)));
+
+      assertThat(waiting.isCancelled()).isTrue();
+      assertThat(start.getCount()).isEqualTo(1);
+    }
+  }
+
+  private void awaitReadyAndStart(
+      CountDownLatch ready, CountDownLatch start, List<? extends Future<?>> attempts)
+      throws InterruptedException {
+    boolean started = false;
+    try {
+      assertThat(ready.await(10, TimeUnit.SECONDS)).as("동시 요청 준비 완료").isTrue();
+      start.countDown();
+      started = true;
+    } finally {
+      if (!started) {
+        attempts.forEach(attempt -> attempt.cancel(true));
+      }
+    }
   }
 
   private void awaitBlockedRequests() throws InterruptedException {
