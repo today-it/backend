@@ -7,6 +7,7 @@ import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
@@ -110,6 +111,7 @@ public class CourseCommandService {
    * @param memberId 인증된 작성자 식별자
    * @param command 순서 변경 조건
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws InvalidCoursePlaceOrderException 장소 ID 목록이 null이거나 비어 있거나 현재 코스의 장소 ID 목록과 일치하지 않는 경우
    */
   @Transactional
   public void reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
