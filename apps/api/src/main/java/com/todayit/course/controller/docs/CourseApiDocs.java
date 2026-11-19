@@ -457,4 +457,90 @@ public interface CourseApiDocs {
       @Parameter(description = "순서를 변경할 코스 식별자입니다.", example = "1", required = true) int courseId,
       UpdateCoursePlaceOrdersRequest request,
       @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 코스에서 특정 장소를 삭제합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @param authentication 인증된 작성자 정보
+   * @return 처리 성공 여부
+   */
+  @Operation(
+      summary = "코스 장소 삭제",
+      description =
+          "코스에서 특정 장소(coursePlaceId)를 삭제하고 이후 장소들의 방문 순서(order)를 자동으로 1씩 당깁니다. "
+              + "작성자 본인만 삭제할 수 있습니다. "
+              + "마지막 장소를 삭제해도 빈 DRAFT 코스는 유지됩니다. "
+              + "존재하지 않거나 삭제된 코스, 또는 타인의 코스인 경우 404(COURSE_NOT_FOUND)를 반환합니다. "
+              + "해당 코스 내에 존재하지 않는 장소 식별자인 경우 404(COURSE_PLACE_NOT_FOUND)를 반환합니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "코스 장소 삭제 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": null
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 정보 누락, 유효하지 않은 토큰 또는 만료된 로그인 세션",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "인증 필요",
+                        value =
+                            """
+                    {"success":false,"code":"AUTHENTICATION_REQUIRED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스를 찾을 수 없거나(작성자 불일치 포함) 코스 내 장소를 찾을 수 없음",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "코스를 찾을 수 없거나 작성자가 아님",
+                      value =
+                          """
+                      {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                      """),
+                  @ExampleObject(
+                      name = "코스 내 장소를 찾을 수 없음",
+                      value =
+                          """
+                      {"success":false,"code":"COURSE_PLACE_NOT_FOUND","message":"코스 내 장소를 찾을 수 없습니다."}
+                      """)
+                })),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<Void>> deleteCoursePlace(
+      @Parameter(description = "장소를 삭제할 코스 식별자입니다.", example = "1", required = true) int courseId,
+      @Parameter(description = "삭제할 코스 장소 식별자입니다.", example = "10", required = true)
+          int coursePlaceId,
+      @Parameter(hidden = true) Authentication authentication);
 }

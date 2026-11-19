@@ -165,4 +165,14 @@ class CourseFacadeTest {
     // then
     verify(courses).reorderPlaces("member-1", command);
   }
+
+  @Test
+  @DisplayName("코스 장소 삭제를 정상적으로 위임한다")
+  void removesPlaceFromCourseSuccessfully() {
+    // when
+    facade.removePlaceFromCourse("member-1", 1, 10);
+
+    // then
+    verify(courses).removePlace("member-1", 1, 10);
+  }
 }

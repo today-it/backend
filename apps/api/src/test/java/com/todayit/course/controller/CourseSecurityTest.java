@@ -1,6 +1,7 @@
 package com.todayit.course.controller;
 
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -69,6 +70,17 @@ class CourseSecurityTest {
             patch("/api/v1/courses/1/places/order")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
+
+    // then
+    result.andExpect(status().isUnauthorized());
+    verifyNoInteractions(facade);
+  }
+
+  @Test
+  @DisplayName("코스 장소 삭제는 비회원 요청을 거부한다")
+  void rejectsAnonymousPlaceDeletion() throws Exception {
+    // when
+    ResultActions result = mvc.perform(delete("/api/v1/courses/1/places/10"));
 
     // then
     result.andExpect(status().isUnauthorized());

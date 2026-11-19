@@ -4,6 +4,7 @@ import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
@@ -88,6 +89,20 @@ public class CourseFacade {
   @Transactional
   public void updateCoursePlaceOrders(String memberId, UpdateCoursePlaceOrdersCommand command) {
     courseCommandService.reorderPlaces(memberId, command);
+  }
+
+  /**
+   * 코스에서 특정 장소를 삭제합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   */
+  @Transactional
+  public void removePlaceFromCourse(String memberId, int courseId, int coursePlaceId) {
+    courseCommandService.removePlace(memberId, courseId, coursePlaceId);
   }
 
   /**

@@ -16,6 +16,7 @@ import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseRepository;
@@ -289,6 +290,130 @@ class CourseCommandServiceTest {
     UpdateCoursePlaceOrdersCommand command = new UpdateCoursePlaceOrdersCommand(1, List.of(999));
     assertThrows(
         InvalidCoursePlaceOrderException.class, () -> service.reorderPlaces("member-1", command));
+    verify(courses, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("장소를 삭제하면 후속 장소들의 순서를 1씩 당기고 저장한다")
+  void removesPlaceAndShiftsSubsequentOrdersSuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    CoursePlace cp1 = course.addPlace(10, null, 60);
+    CoursePlace cp2 = course.addPlace(20, null, 30);
+    CoursePlace cp3 = course.addPlace(30, null, 40);
+    ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
+    ReflectionTestUtils.setField(cp2, "coursePlaceId", 102);
+    ReflectionTestUtils.setField(cp3, "coursePlaceId", 103);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when
+    service.removePlace("member-1", 1, 102);
+
+    // then
+    assertThat(course.getCoursePlaces()).hasSize(2);
+    assertThat(cp1.getOrder()).isEqualTo(1);
+    assertThat(cp3.getOrder()).isEqualTo(2);
+    verify(courses).flush();
+    verify(courses).saveAndFlush(course);
+  }
+
+  @Test
+  @DisplayName("마지막 장소를 삭제하면 순서 이동 없이 삭제 후 저장한다")
+  void removesLastPlaceWithoutShifting() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    CoursePlace cp1 = course.addPlace(10, null, 60);
+    CoursePlace cp2 = course.addPlace(20, null, 30);
+    ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
+    ReflectionTestUtils.setField(cp2, "coursePlaceId", 102);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when
+    service.removePlace("member-1", 1, 102);
+
+    // then
+    assertThat(course.getCoursePlaces()).hasSize(1);
+    assertThat(cp1.getOrder()).isEqualTo(1);
+    verify(courses, never()).flush();
+    verify(courses).saveAndFlush(course);
+  }
+
+  @Test
+  @DisplayName("마지막 남은 단일 장소를 삭제하면 빈 DRAFT 상태가 유지된다")
+  void removesOnlyPlaceLeavingEmptyDraft() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    CoursePlace cp1 = course.addPlace(10, null, 60);
+    ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when
+    service.removePlace("member-1", 1, 101);
+
+    // then
+    assertThat(course.getCoursePlaces()).isEmpty();
+    verify(courses, never()).flush();
+    verify(courses).saveAndFlush(course);
+  }
+
+  @Test
+  @DisplayName("장소 삭제 시 코스가 존재하지 않으면 404 예외를 던진다")
+  void rejectsRemovePlaceWhenCourseNotFound() {
+    // given
+    when(courses.findByIdAndMemberIdForUpdate(999, "member-1")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.removePlace("member-1", 999, 101));
+    verify(courses, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("장소 삭제 시 코스 내에 해당 장소가 존재하지 않으면 404 CoursePlaceNotFoundException을 던진다")
+  void rejectsRemovePlaceWhenPlaceNotFoundInCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    CoursePlace cp1 = course.addPlace(10, null, 60);
+    ReflectionTestUtils.setField(cp1, "coursePlaceId", 101);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(CoursePlaceNotFoundException.class, () -> service.removePlace("member-1", 1, 999));
     verify(courses, never()).saveAndFlush(any());
   }
 }

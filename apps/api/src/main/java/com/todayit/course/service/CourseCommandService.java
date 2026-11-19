@@ -7,6 +7,7 @@ import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseRepository;
@@ -127,6 +128,35 @@ public class CourseCommandService {
     course.reorderPlaces(command.coursePlaceIds());
     courseRepository.flush();
     course.applyNewOrders(command.coursePlaceIds());
+    courseRepository.saveAndFlush(course);
+  }
+
+  /**
+   * 코스 행을 잠근 뒤 특정 장소를 삭제하고 후속 장소들의 순서를 재조정합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   */
+  @Transactional
+  public void removePlace(String memberId, int courseId, int coursePlaceId) {
+    Course course =
+        courseRepository
+            .findByIdAndMemberIdForUpdate(courseId, memberId)
+            .orElseThrow(CourseNotFoundException::new);
+    if (!course.isWriter(memberId)
+        || course.getDeletedAt() != null
+        || course.getStatus() == CourseStatus.DELETED) {
+      throw new CourseNotFoundException();
+    }
+    List<CoursePlace> subsequentPlaces = course.shiftOrdersToNegativeForRemoval(coursePlaceId);
+    course.removeCoursePlace(coursePlaceId);
+    if (!subsequentPlaces.isEmpty()) {
+      courseRepository.flush();
+      course.restoreShiftedOrdersForRemoval(subsequentPlaces);
+    }
     courseRepository.saveAndFlush(course);
   }
 }

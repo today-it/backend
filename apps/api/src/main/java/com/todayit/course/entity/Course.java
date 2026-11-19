@@ -1,5 +1,6 @@
 package com.todayit.course.entity;
 
+import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import jakarta.persistence.CascadeType;
@@ -329,6 +330,53 @@ public class Course {
       if (cp != null) {
         cp.setOrder(order);
       }
+    }
+  }
+
+  /**
+   * 삭제 대상 장소의 뒤에 위치한 장소들을 임시 음수 순서로 설정합니다.
+   *
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @return 임시 음수 순서로 변경된 장소 목록
+   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   */
+  public List<CoursePlace> shiftOrdersToNegativeForRemoval(int coursePlaceId) {
+    CoursePlace targetPlace =
+        coursePlaces.stream()
+            .filter(cp -> cp.getCoursePlaceId() == coursePlaceId)
+            .findFirst()
+            .orElseThrow(CoursePlaceNotFoundException::new);
+
+    List<CoursePlace> subsequentPlaces =
+        coursePlaces.stream().filter(cp -> cp.getOrder() > targetPlace.getOrder()).toList();
+
+    for (CoursePlace cp : subsequentPlaces) {
+      cp.setOrder(-cp.getOrder());
+    }
+    return subsequentPlaces;
+  }
+
+  /**
+   * 음수 임시 순서로 변경된 장소들의 순서를 1씩 당긴 양수로 복원합니다.
+   *
+   * @param shiftedPlaces 임시 음수 순서로 변경된 장소 목록
+   */
+  public void restoreShiftedOrdersForRemoval(List<CoursePlace> shiftedPlaces) {
+    for (CoursePlace cp : shiftedPlaces) {
+      cp.setOrder(-cp.getOrder() - 1);
+    }
+  }
+
+  /**
+   * 코스에서 특정 코스 장소를 제거합니다.
+   *
+   * @param coursePlaceId 제거할 코스 장소 식별자
+   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   */
+  public void removeCoursePlace(int coursePlaceId) {
+    boolean removed = coursePlaces.removeIf(cp -> cp.getCoursePlaceId() == coursePlaceId);
+    if (!removed) {
+      throw new CoursePlaceNotFoundException();
     }
   }
 

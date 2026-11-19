@@ -32,6 +32,9 @@ public enum CourseErrorCode implements ErrorCode {
   /** 코스에 추가하려는 장소를 찾을 수 없거나 삭제된 경우입니다. */
   PLACE_NOT_FOUND("PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND),
 
+  /** 코스 내 장소를 찾을 수 없는 경우입니다. */
+  COURSE_PLACE_NOT_FOUND("COURSE_PLACE_NOT_FOUND", "코스 내 장소를 찾을 수 없습니다.", ErrorStatus.NOT_FOUND),
+
   /** 장소 식별자가 누락되었거나 유효하지 않은 경우입니다. */
   INVALID_PLACE_ID("INVALID_PLACE_ID", "장소 식별자는 1 이상이어야 합니다."),
 

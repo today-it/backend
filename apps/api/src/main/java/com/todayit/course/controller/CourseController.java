@@ -14,6 +14,7 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -120,6 +121,22 @@ public class CourseController implements CourseApiDocs {
     courseFacade.updateCoursePlaceOrders(
         authentication.getName(),
         new UpdateCoursePlaceOrdersCommand(courseId, request.coursePlaceIds()));
+    return ResponseEntity.ok(CommonResponse.success(null));
+  }
+
+  /**
+   * 코스에서 특정 장소를 삭제합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @param authentication 인증된 작성자 정보
+   * @return 처리 성공 여부
+   */
+  @Override
+  @DeleteMapping("/{courseId}/places/{coursePlaceId}")
+  public ResponseEntity<CommonResponse<Void>> deleteCoursePlace(
+      @PathVariable int courseId, @PathVariable int coursePlaceId, Authentication authentication) {
+    courseFacade.removePlaceFromCourse(authentication.getName(), courseId, coursePlaceId);
     return ResponseEntity.ok(CommonResponse.success(null));
   }
 }
