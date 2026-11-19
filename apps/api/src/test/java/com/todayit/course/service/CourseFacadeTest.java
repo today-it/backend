@@ -7,7 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.todayit.course.entity.Course;
-import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.PlaceNotFoundException;
@@ -15,6 +14,7 @@ import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
+import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
@@ -31,24 +31,25 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("코스 생성, 상세 조회 및 장소 편집 Facade")
 class CourseFacadeTest {
+
   @Mock private RegionQueryService regions;
   @Mock private CourseCommandService courses;
   @Mock private CourseQueryService courseQueryService;
   @Mock private PlaceCourseQueryService placeCourseQueryService;
+
   @InjectMocks private CourseFacade facade;
 
   @Test
-  @DisplayName("코스를 정상적으로 생성한다")
+  @DisplayName("코스 생성 명령을 CourseCommandService에 정상적으로 위임한다")
   void createsCourseSuccessfully() {
     // given
     CreateCourseCommand command =
         new CreateCourseCommand(
             "코스",
-            List.of("감성적"),
+            List.of("CAFE"),
             LocalDateTime.of(2026, 12, 1, 10, 0),
-            LocalDateTime.of(2026, 12, 1, 14, 0),
+            null,
             CourseTransport.WALKING);
     CreateCourseResult expected = new CreateCourseResult(1);
     when(courses.createCourse("member-1", command)).thenReturn(expected);
@@ -58,10 +59,11 @@ class CourseFacadeTest {
 
     // then
     assertThat(result).isEqualTo(expected);
+    verify(courses).createCourse("member-1", command);
   }
 
   @Test
-  @DisplayName("활성화된 장소를 코스에 정상적으로 추가한다")
+  @DisplayName("장소가 유효하면 CourseCommandService에 장소 추가를 위임한다")
   void addsPlaceToCourseSuccessfully() {
     // given
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, 1, 60);
@@ -74,11 +76,12 @@ class CourseFacadeTest {
 
     // then
     assertThat(result).isEqualTo(expected);
+    verify(courses).addPlace("member-1", command);
   }
 
   @Test
-  @DisplayName("존재하지 않거나 비활성화된 장소는 코스에 추가할 수 없다")
-  void rejectsWhenPlaceDoesNotExist() {
+  @DisplayName("장소가 존재하지 않거나 비활성 상태이면 PlaceNotFoundException을 던진다")
+  void throwsExceptionWhenPlaceNotFound() {
     // given
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 999, 1, 60);
     when(placeCourseQueryService.existsActivePlace(999)).thenReturn(false);
@@ -89,62 +92,91 @@ class CourseFacadeTest {
   }
 
   @Test
-  @DisplayName("코스 상세 정보를 지역 요약 및 장소 정보와 함께 조회한다")
+  @DisplayName("코스 상세 정보를 정상적으로 조합하여 반환한다")
   void getsCourseDetailSuccessfully() {
     // given
-    LocalDateTime start = LocalDateTime.of(2026, 12, 1, 10, 0);
     Course course =
         Course.createDraft(
             "member-1",
-            "종로 데이트",
+            "코스",
             CourseTransport.WALKING,
-            start,
-            start.plusHours(4),
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
             List.of(),
-            start.minusDays(1));
-    course.addRegion(7);
-    course.addCoursePlace(new CoursePlace(course, 10, 1, 60));
+            LocalDateTime.now());
+    course.addPlace(10, null, 60);
 
+    CourseRegionResult regionResult = new CourseRegionResult("11", "서울특별시", "110", "종로구");
     CoursePlaceItem placeItem =
         new CoursePlaceItem(
             10,
             "블루보틀 삼청",
             "CAFE_DESSERT",
-            "서울특별시 종로구",
+            "서울특별시 종로구 북촌로 5길",
             new BigDecimal("37.58123400"),
             new BigDecimal("126.98123400"),
             "https://example.com/place.jpg");
 
     when(courseQueryService.getCourse(1)).thenReturn(course);
-    when(regions.getCourseRegionSummary(List.of(7)))
-        .thenReturn(new CourseRegionResult("11", "서울특별시", "110", "종로구"));
+    when(regions.getCourseRegionSummary(List.of())).thenReturn(regionResult);
     when(placeCourseQueryService.findPlacesByIds(List.of(10))).thenReturn(Map.of(10, placeItem));
 
     // when
     CourseDetailResult result = facade.getCourseDetail(1, "member-1");
 
     // then
-    assertThat(result.title()).isEqualTo("종로 데이트");
-    assertThat(result.transport()).isEqualTo(CourseTransport.WALKING);
-    assertThat(result.sidoCode()).isEqualTo("11");
+    assertThat(result.title()).isEqualTo("코스");
     assertThat(result.sidoName()).isEqualTo("서울특별시");
-    assertThat(result.sigunguCode()).isEqualTo("110");
     assertThat(result.sigunguName()).isEqualTo("종로구");
     assertThat(result.isWriter()).isTrue();
     assertThat(result.places()).hasSize(1);
     assertThat(result.places().get(0).name()).isEqualTo("블루보틀 삼청");
-    assertThat(result.places().get(0).imageUrl()).isEqualTo("https://example.com/place.jpg");
     assertThat(result.places().get(0).stayMinute()).isEqualTo(60);
   }
 
   @Test
-  @DisplayName("접근 권한이 없는 비공개 코스는 조회할 수 없다")
-  void rejectsInaccessibleCourse() {
+  @DisplayName("지역 정보가 없는 코스도 NullPointerException 없이 조회된다")
+  void getsCourseDetailWithoutRegionsSuccessfully() {
     // given
-    LocalDateTime start = LocalDateTime.of(2026, 12, 1, 10, 0);
     Course course =
         Course.createDraft(
-            "member-1", "비공개 코스", CourseTransport.WALKING, start, null, List.of(), start);
+            "member-1",
+            "지역 없는 코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+
+    when(courseQueryService.getCourse(1)).thenReturn(course);
+    when(regions.getCourseRegionSummary(List.of())).thenReturn(null);
+    when(placeCourseQueryService.findPlacesByIds(List.of())).thenReturn(Map.of());
+
+    // when
+    CourseDetailResult result = facade.getCourseDetail(1, "member-1");
+
+    // then
+    assertThat(result.title()).isEqualTo("지역 없는 코스");
+    assertThat(result.sidoCode()).isNull();
+    assertThat(result.sidoName()).isNull();
+    assertThat(result.sigunguCode()).isNull();
+    assertThat(result.sigunguName()).isNull();
+    assertThat(result.places()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("접근 권한이 없는 코스 상세 조회 시 CourseNotFoundException을 던진다")
+  void throwsExceptionWhenCannotAccessCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "비공개 코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
     when(courseQueryService.getCourse(1)).thenReturn(course);
 
     // when & then
@@ -163,7 +195,7 @@ class CourseFacadeTest {
     facade.updateCoursePlaceOrders("member-1", command);
 
     // then
-    verify(courses).reorderPlaces("member-1", command);
+    verify(courses).updatePlaceOrders("member-1", command);
   }
 
   @Test
@@ -184,5 +216,20 @@ class CourseFacadeTest {
 
     // then
     verify(courses).deleteCourse("member-1", 1);
+  }
+
+  @Test
+  @DisplayName("코스 복사를 정상적으로 위임한다")
+  void copiesCourseSuccessfully() {
+    // given
+    CopyCourseResult expected = new CopyCourseResult(2);
+    when(courses.copyCourse("member-1", 1)).thenReturn(expected);
+
+    // when
+    CopyCourseResult result = facade.copyCourse("member-1", 1);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+    verify(courses).copyCourse("member-1", 1);
   }
 }

@@ -12,10 +12,10 @@ import java.util.List;
  * 코스 상세 조회 API 응답입니다.
  *
  * @param courseId 코스 식별자
- * @param title 코스 이름
+ * @param title 코스 이름, 없으면 null
  * @param courseSummary 코스 요약 설명, 없으면 null
- * @param transport 이동 수단
- * @param startAt 코스 시작 일시
+ * @param transport 이동 수단, 없으면 null
+ * @param startAt 코스 시작 일시, 없으면 null
  * @param endAt 코스 종료 일시, 없으면 null
  * @param status 코스 상태
  * @param visibility 코스 공개 여부
@@ -35,9 +35,9 @@ public record CourseDetailResponse(
     @Schema(description = "코스 식별자입니다.", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         int courseId,
     @Schema(
-            description = "코스 이름입니다.",
+            description = "코스 이름입니다. 임시저장 코스는 미설정 시 null입니다.",
             example = "서울 도심 산책 코스",
-            requiredMode = Schema.RequiredMode.REQUIRED)
+            nullable = true)
         String title,
     @Schema(
             description = "코스 요약 설명입니다. 등록된 설명이 없으면 null을 반환합니다.",
@@ -45,14 +45,14 @@ public record CourseDetailResponse(
             nullable = true)
         String courseSummary,
     @Schema(
-            description = "코스의 이동 수단입니다.",
+            description = "코스의 이동 수단입니다. 임시저장 코스는 미설정 시 null입니다.",
             example = "WALKING",
-            requiredMode = Schema.RequiredMode.REQUIRED)
+            nullable = true)
         CourseTransport transport,
     @Schema(
-            description = "코스 시작 일시입니다.",
+            description = "코스 시작 일시입니다. 임시저장 코스는 미설정 시 null입니다.",
             example = "2026-12-01T10:00:00",
-            requiredMode = Schema.RequiredMode.REQUIRED)
+            nullable = true)
         LocalDateTime startAt,
     @Schema(
             description = "코스 종료 일시입니다. 미설정 시 null을 반환합니다.",

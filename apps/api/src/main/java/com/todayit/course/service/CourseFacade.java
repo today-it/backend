@@ -11,6 +11,7 @@ import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
+import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
@@ -38,7 +39,7 @@ public class CourseFacade {
    * @param regionQueryService 지역 검증 서비스
    * @param courseCommandService 코스 저장 서비스
    * @param courseQueryService 코스 조회 서비스
-   * @param placeCourseQueryService 장소 조회 서비스 계약
+   * @param placeCourseQueryService 장소 조회 서비스
    */
   public CourseFacade(
       RegionQueryService regionQueryService,
@@ -52,25 +53,26 @@ public class CourseFacade {
   }
 
   /**
-   * 비공개 DRAFT 코스를 생성합니다.
+   * 지역과 코스 엔티티를 생성하고 관계를 연결합니다.
    *
    * @param memberId 인증된 작성자 식별자
-   * @param command 코스 생성 조건
+   * @param command 검증된 생성 조건
    * @return 생성 결과
    */
+  @Transactional
   public CreateCourseResult createCourse(String memberId, CreateCourseCommand command) {
     return courseCommandService.createCourse(memberId, command);
   }
 
   /**
-   * 코스에 새 장소를 추가합니다.
+   * 장소 존재 여부 및 중복 허용 개수를 확인한 뒤 코스에 장소를 추가합니다.
    *
    * @param memberId 인증된 작성자 식별자
-   * @param command 코스 장소 추가 조건
-   * @return 추가 결과
+   * @param command 추가할 장소 정보
+   * @return 추가된 장소 결과
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
-   * @throws PlaceNotFoundException 장소가 존재하지 않거나 비활성화/삭제된 경우
-   * @throws MaxPlaceDuplicationExceededException 동일한 장소가 이미 최대 허용 횟수(2개)만큼 존재하는 경우
+   * @throws PlaceNotFoundException 장소가 존재하지 않거나 삭제된 경우
+   * @throws MaxPlaceDuplicationExceededException 코스 내에 동일 장소가 이미 2회 추가된 경우
    */
   @Transactional
   public AddCoursePlaceResult addPlaceToCourse(String memberId, AddCoursePlaceCommand command) {
@@ -81,24 +83,25 @@ public class CourseFacade {
   }
 
   /**
-   * 코스 장소의 방문 순서를 일괄 변경합니다.
+   * 코스 장소들의 방문 순서를 일괄 변경합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 순서 변경 조건
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
    */
   @Transactional
   public void updateCoursePlaceOrders(String memberId, UpdateCoursePlaceOrdersCommand command) {
-    courseCommandService.reorderPlaces(memberId, command);
+    courseCommandService.updatePlaceOrders(memberId, command);
   }
 
   /**
-   * 코스에서 특정 장소를 삭제합니다.
+   * 코스에서 특정 장소를 삭제하고 남은 장소들의 순서를 재조정합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param courseId 코스 식별자
    * @param coursePlaceId 삭제할 코스 장소 식별자
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
-   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   * @throws CoursePlaceNotFoundException 코스 내에 해당 장소가 없는 경우
    */
   @Transactional
   public void removePlaceFromCourse(String memberId, int courseId, int coursePlaceId) {
@@ -115,6 +118,19 @@ public class CourseFacade {
   @Transactional
   public void deleteCourse(String memberId, int courseId) {
     courseCommandService.deleteCourse(memberId, courseId);
+  }
+
+  /**
+   * 확정된 원본 코스를 복사하여 새로운 DRAFT 코스를 생성합니다.
+   *
+   * @param memberId 인증된 요청 회원 식별자
+   * @param courseId 복사할 원본 코스 식별자
+   * @return 생성된 DRAFT 코스 복사 결과
+   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 타인의 비공개 코스인 경우
+   */
+  @Transactional
+  public CopyCourseResult copyCourse(String memberId, int courseId) {
+    return courseCommandService.copyCourse(memberId, courseId);
   }
 
   /**

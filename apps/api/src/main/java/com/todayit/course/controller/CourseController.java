@@ -6,6 +6,7 @@ import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
+import com.todayit.course.dto.response.CopyCourseResponse;
 import com.todayit.course.dto.response.CourseDetailResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.service.CourseFacade;
@@ -153,5 +154,23 @@ public class CourseController implements CourseApiDocs {
       @PathVariable int courseId, Authentication authentication) {
     courseFacade.deleteCourse(authentication.getName(), courseId);
     return ResponseEntity.ok(CommonResponse.success(null));
+  }
+
+  /**
+   * 확정된 코스를 새로운 DRAFT 코스로 복사합니다.
+   *
+   * @param courseId 복사할 원본 코스 식별자
+   * @param authentication 인증된 회원 정보
+   * @return 복사되어 새로 생성된 코스 식별자
+   */
+  @Override
+  @PostMapping("/{courseId}/copy")
+  public ResponseEntity<CommonResponse<CopyCourseResponse>> copyCourse(
+      @PathVariable int courseId, Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            CommonResponse.success(
+                CopyCourseResponse.from(
+                    courseFacade.copyCourse(authentication.getName(), courseId))));
   }
 }

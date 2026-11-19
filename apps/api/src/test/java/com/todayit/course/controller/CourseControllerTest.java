@@ -29,6 +29,7 @@ import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
+import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
@@ -1039,5 +1040,65 @@ class CourseControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("확정된 코스를 정상적으로 복사하고 201과 복사된 코스 ID를 반환한다")
+  void copiesCourseSuccessfully() throws Exception {
+    // given
+    when(courseFacade.copyCourse("member-1", 1)).thenReturn(new CopyCourseResult(2));
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/copy")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(2));
+    verify(courseFacade).copyCourse("member-1", 1);
+  }
+
+  @Test
+  @DisplayName("코스 복사 시 코스를 찾을 수 없거나 타인의 비공개 코스이면 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnCopyCourse() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException()).when(courseFacade).copyCourse("member-1", 999);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/999/copy")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("코스 복사 시 DRAFT 상태의 코스이면 400과 CANNOT_COPY_DRAFT를 반환한다")
+  void returnsBadRequestWhenCopyCourseIsDraft() throws Exception {
+    // given
+    doThrow(new CourseException(CourseErrorCode.CANNOT_COPY_DRAFT))
+        .when(courseFacade)
+        .copyCourse("member-1", 1);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/copy")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("CANNOT_COPY_DRAFT"));
   }
 }

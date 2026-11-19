@@ -36,8 +36,8 @@ public class CoursePlace {
   @Column(name = "\"order\"", nullable = false)
   private int order;
 
-  @Column(name = "stay_minute", nullable = false)
-  private int stayMinute;
+  @Column(name = "stay_minute")
+  private Integer stayMinute;
 
   protected CoursePlace() {}
 
@@ -47,9 +47,9 @@ public class CoursePlace {
    * @param course 코스 엔티티
    * @param placeId 장소 식별자
    * @param order 방문 순서
-   * @param stayMinute 머무는 시간(분)
+   * @param stayMinute 머무는 시간(분), 미입력 시 null
    */
-  public CoursePlace(Course course, int placeId, int order, int stayMinute) {
+  public CoursePlace(Course course, int placeId, int order, Integer stayMinute) {
     this.course = course;
     this.placeId = placeId;
     this.order = order;
@@ -72,11 +72,11 @@ public class CoursePlace {
     this.order = order;
   }
 
-  public int getStayMinute() {
+  public Integer getStayMinute() {
     return stayMinute;
   }
 
-  public void setStayMinute(int stayMinute) {
+  public void setStayMinute(Integer stayMinute) {
     this.stayMinute = stayMinute;
   }
 }

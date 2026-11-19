@@ -39,17 +39,17 @@ public class Course {
   @Column(name = "member_id", nullable = false, length = 36)
   private String memberId;
 
-  @Column(name = "title", nullable = false, length = 100)
+  @Column(name = "title", length = 100)
   private String title;
 
   @Column(name = "course_summary", length = 500)
   private String courseSummary;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "transport", nullable = false, length = 30)
+  @Column(name = "transport", length = 30)
   private CourseTransport transport;
 
-  @Column(name = "start_at", nullable = false)
+  @Column(name = "start_at")
   private LocalDateTime startAt;
 
   @Column(name = "end_at")
@@ -124,6 +124,57 @@ public class Course {
     course.createdAt = createdAt;
     selectedThemes.forEach(theme -> course.themes.add(new CourseTheme(course, theme)));
     return course;
+  }
+
+  /**
+   * 확정된 원본 코스를 바탕으로 새로운 DRAFT 복사본을 생성합니다. 복사본은 DRAFT 및 비공개 상태로 생성되며, 장소 목록과 방문 순서는 유지되지만 제목, 이동수단,
+   * 방문 일시 및 각 장소의 체류 시간은 null(공백) 상태로 초기화됩니다.
+   *
+   * @param memberId 복사를 수행하는 회원 식별자
+   * @param sourceCourse 복사할 원본 확정 코스
+   * @param createdAt 생성 시각
+   * @return 장소 순서가 복제된 DRAFT 코스
+   */
+  public static Course createCopyDraft(
+      String memberId, Course sourceCourse, LocalDateTime createdAt) {
+    Course course = new Course();
+    course.memberId = memberId;
+    course.title = null;
+    course.transport = null;
+    course.startAt = null;
+    course.endAt = null;
+    course.viewCount = 0;
+    course.status = CourseStatus.DRAFT;
+    course.visibility = CourseVisibility.PRIVATE;
+    course.createdAt = createdAt;
+
+    sourceCourse.getCoursePlaces().stream()
+        .sorted((p1, p2) -> Integer.compare(p1.getOrder(), p2.getOrder()))
+        .forEach(
+            sourcePlace -> {
+              CoursePlace copiedPlace =
+                  new CoursePlace(course, sourcePlace.getPlaceId(), sourcePlace.getOrder(), null);
+              course.coursePlaces.add(copiedPlace);
+            });
+
+    return course;
+  }
+
+  /**
+   * 특정 회원이 이 코스를 복사할 수 있는지 확인합니다. 공개된 확정 코스이거나 본인의 확정 코스인 경우 복사할 수 있습니다. 다른 사람의 비공개 코스나 DRAFT 상태의
+   * 코스는 복사할 수 없습니다.
+   *
+   * @param accessorMemberId 복사를 시도하는 회원 식별자
+   * @return 복사 가능 여부
+   */
+  public boolean canCopy(String accessorMemberId) {
+    if (deletedAt != null || status != CourseStatus.ACTIVE) {
+      return false;
+    }
+    if (visibility == CourseVisibility.PUBLIC) {
+      return true;
+    }
+    return isWriter(accessorMemberId);
   }
 
   /**
@@ -290,11 +341,11 @@ public class Course {
    *
    * @param placeId 추가할 장소 식별자
    * @param targetOrder 지정할 방문 순서, null이면 맨 뒤에 추가
-   * @param stayMinute 체류 시간(분)
+   * @param stayMinute 체류 시간(분), null 허용
    * @return 생성된 CoursePlace 엔티티
    * @throws MaxPlaceDuplicationExceededException 이미 동일 장소가 최대 중복 개수(2개)만큼 존재하는 경우
    */
-  public CoursePlace addPlace(int placeId, Integer targetOrder, int stayMinute) {
+  public CoursePlace addPlace(int placeId, Integer targetOrder, Integer stayMinute) {
     if (!canAddPlace(placeId)) {
       throw new MaxPlaceDuplicationExceededException();
     }
@@ -318,14 +369,31 @@ public class Course {
         || newOrderPlaceIds.size() != coursePlaces.size()) {
       throw new InvalidCoursePlaceOrderException();
     }
-    Set<Integer> existingIds =
+
+    Set<Integer> currentPlaceIds =
         coursePlaces.stream().map(CoursePlace::getCoursePlaceId).collect(Collectors.toSet());
-    Set<Integer> newIds = new HashSet<>(newOrderPlaceIds);
-    if (!existingIds.equals(newIds)) {
+    Set<Integer> requestedPlaceIds = new HashSet<>(newOrderPlaceIds);
+
+    if (!currentPlaceIds.equals(requestedPlaceIds)) {
       throw new InvalidCoursePlaceOrderException();
     }
-    for (int i = 0; i < coursePlaces.size(); i++) {
-      coursePlaces.get(i).setOrder(-(i + 1));
+
+    Map<Integer, CoursePlace> placeMap =
+        coursePlaces.stream()
+            .collect(Collectors.toMap(CoursePlace::getCoursePlaceId, Function.identity()));
+
+    for (int i = 0; i < newOrderPlaceIds.size(); i++) {
+      CoursePlace place = placeMap.get(newOrderPlaceIds.get(i));
+      place.setOrder(-(i + 1));
+    }
+  }
+
+  /** 임시 음수 순서로 설정된 장소들을 양수 순서로 반전하여 확정합니다. */
+  public void confirmReorder() {
+    for (CoursePlace place : coursePlaces) {
+      if (place.getOrder() < 0) {
+        place.setOrder(-place.getOrder());
+      }
     }
   }
 
@@ -371,7 +439,7 @@ public class Course {
   }
 
   /**
-   * 음수 임시 순서로 변경된 장소들의 순서를 1씩 당긴 양수로 복원합니다.
+   * 음수 임시 순서로 변경된 장소들의 순서를 1씩 앞당긴 양수로 복원합니다.
    *
    * @param shiftedPlaces 임시 음수 순서로 변경된 장소 목록
    */
@@ -382,22 +450,27 @@ public class Course {
   }
 
   /**
-   * 코스에서 특정 코스 장소를 제거합니다.
+   * 코스에서 특정 장소를 삭제합니다.
    *
-   * @param coursePlaceId 제거할 코스 장소 식별자
-   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @return 삭제된 장소 엔티티
+   * @throws CoursePlaceNotFoundException 코스에 해당 장소가 없는 경우
    */
-  public void removeCoursePlace(int coursePlaceId) {
-    boolean removed = coursePlaces.removeIf(cp -> cp.getCoursePlaceId() == coursePlaceId);
-    if (!removed) {
-      throw new CoursePlaceNotFoundException();
-    }
+  public CoursePlace removeCoursePlace(int coursePlaceId) {
+    CoursePlace targetPlace =
+        coursePlaces.stream()
+            .filter(cp -> cp.getCoursePlaceId() == coursePlaceId)
+            .findFirst()
+            .orElseThrow(CoursePlaceNotFoundException::new);
+
+    coursePlaces.remove(targetPlace);
+    return targetPlace;
   }
 
   /**
-   * 코스에 지역 관계를 추가합니다.
+   * 지역 식별자로 코스-지역 관계를 추가합니다.
    *
-   * @param regionId 연결할 지역 식별자
+   * @param regionId 지역 식별자
    */
   public void addRegion(int regionId) {
     this.regions.add(new RegionCourse(this, regionId));

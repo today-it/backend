@@ -46,7 +46,10 @@ public enum CourseErrorCode implements ErrorCode {
 
   /** 동일한 장소를 허용 횟수(최대 2회)를 초과하여 추가하려는 경우입니다. */
   MAX_PLACE_DUPLICATION_EXCEEDED(
-      "MAX_PLACE_DUPLICATION_EXCEEDED", "동일한 장소는 코스에 최대 2회까지만 추가할 수 있습니다.");
+      "MAX_PLACE_DUPLICATION_EXCEEDED", "동일한 장소는 코스에 최대 2회까지만 추가할 수 있습니다."),
+
+  /** 임시저장(DRAFT) 상태의 코스는 복사할 수 없는 경우입니다. */
+  CANNOT_COPY_DRAFT("CANNOT_COPY_DRAFT", "임시저장 코스는 복사할 수 없습니다.");
 
   private final String code;
   private final String message;

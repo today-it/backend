@@ -7,6 +7,7 @@ import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
+import com.todayit.course.dto.response.CopyCourseResponse;
 import com.todayit.course.dto.response.CourseDetailResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -616,5 +617,95 @@ public interface CourseApiDocs {
   })
   ResponseEntity<CommonResponse<Void>> deleteCourse(
       @Parameter(description = "삭제할 코스 식별자입니다.", example = "1", required = true) int courseId,
+      @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 확정된 코스를 새로운 DRAFT 코스로 복사합니다.
+   *
+   * @param courseId 복사할 원본 코스 식별자
+   * @param authentication 인증된 회원 정보
+   * @return 복사되어 새로 생성된 코스 식별자
+   */
+  @Operation(
+      summary = "코스 불러오기 (복사)",
+      description =
+          "공개된 확정 코스 또는 본인의 확정 코스를 새로운 DRAFT 코스로 복사합니다. "
+              + "장소 목록과 방문 순서는 유지되며, 제목, 이동수단, 방문 일시 및 각 장소의 체류 시간은 공백(null)으로 초기화됩니다. "
+              + "타인의 비공개 코스나 DRAFT 상태의 코스는 복사할 수 없습니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "201",
+        description = "코스 복사 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": {
+                        "courseId": 2
+                      }
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "DRAFT 상태의 코스를 복사하려고 시도한 경우",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "임시저장 코스 복사 불가",
+                        value =
+                            """
+                    {"success":false,"code":"CANNOT_COPY_DRAFT","message":"임시저장 코스는 복사할 수 없습니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 필요",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "인증 필요",
+                        value =
+                            """
+                    {"success":false,"code":"AUTHENTICATION_REQUIRED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스를 찾을 수 없거나 타인의 비공개 코스에 접근한 경우",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "코스를 찾을 수 없음",
+                        value =
+                            """
+                    {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<CopyCourseResponse>> copyCourse(
+      @Parameter(description = "복사할 코스 식별자입니다.", example = "1", required = true) int courseId,
       @Parameter(hidden = true) Authentication authentication);
 }
