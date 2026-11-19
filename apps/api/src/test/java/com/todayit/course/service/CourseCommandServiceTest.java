@@ -498,7 +498,7 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(p2, "coursePlaceId", 102);
 
-    when(courses.findById(1)).thenReturn(Optional.of(sourceCourse));
+    when(courses.findByIdWithPlaces(1)).thenReturn(Optional.of(sourceCourse));
     when(courses.save(any(Course.class)))
         .thenAnswer(
             invocation -> {
@@ -550,7 +550,7 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(sourceCourse, "status", CourseStatus.ACTIVE);
     ReflectionTestUtils.setField(sourceCourse, "visibility", CourseVisibility.PRIVATE);
 
-    when(courses.findById(1)).thenReturn(Optional.of(sourceCourse));
+    when(courses.findByIdWithPlaces(1)).thenReturn(Optional.of(sourceCourse));
     when(courses.save(any(Course.class)))
         .thenAnswer(
             invocation -> {
@@ -584,7 +584,7 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(sourceCourse, "status", CourseStatus.ACTIVE);
     ReflectionTestUtils.setField(sourceCourse, "visibility", CourseVisibility.PRIVATE);
 
-    when(courses.findById(1)).thenReturn(Optional.of(sourceCourse));
+    when(courses.findByIdWithPlaces(1)).thenReturn(Optional.of(sourceCourse));
 
     // when & then
     assertThrows(CourseNotFoundException.class, () -> service.copyCourse("member-2", 1));
@@ -608,7 +608,7 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(sourceCourse, "status", CourseStatus.DRAFT);
     ReflectionTestUtils.setField(sourceCourse, "visibility", CourseVisibility.PUBLIC);
 
-    when(courses.findById(1)).thenReturn(Optional.of(sourceCourse));
+    when(courses.findByIdWithPlaces(1)).thenReturn(Optional.of(sourceCourse));
 
     // when & then
     CourseException exception =
@@ -621,7 +621,7 @@ class CourseCommandServiceTest {
   @DisplayName("존재하지 않거나 삭제된 코스를 복사 시도 시 404 예외를 던진다")
   void rejectsCopyingNonExistentOrDeletedCourse() {
     // given
-    when(courses.findById(999)).thenReturn(Optional.empty());
+    when(courses.findByIdWithPlaces(999)).thenReturn(Optional.empty());
 
     // when & then
     assertThrows(CourseNotFoundException.class, () -> service.copyCourse("member-1", 999));

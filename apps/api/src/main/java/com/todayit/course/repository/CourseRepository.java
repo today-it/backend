@@ -29,6 +29,18 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
       @Param("courseId") int courseId, @Param("memberId") String memberId);
 
   /**
+   * 원본 코스와 포함된 장소 목록을 한 번에 즉시 적재하여 상태 확인과 장소 조회가 동일한 스냅샷을 사용하도록 조회합니다.
+   *
+   * @param courseId 코스 식별자
+   * @return 장소가 함께 적재된 코스, 존재하지 않으면 빈 Optional
+   */
+  @Query(
+      "select distinct course from Course course "
+          + "left join fetch course.coursePlaces "
+          + "where course.courseId = :courseId")
+  Optional<Course> findByIdWithPlaces(@Param("courseId") int courseId);
+
+  /**
    * 선택한 콘셉트를 조회합니다.
    *
    * @param names 콘셉트 이름 목록

@@ -211,7 +211,7 @@ public class CourseCommandService {
   public Course copyCourse(String memberId, int courseId) {
     Course sourceCourse =
         courseRepository
-            .findById(courseId)
+            .findByIdWithPlaces(courseId)
             .filter(c -> c.getDeletedAt() == null && c.getStatus() != CourseStatus.DELETED)
             .orElseThrow(CourseNotFoundException::new);
 
