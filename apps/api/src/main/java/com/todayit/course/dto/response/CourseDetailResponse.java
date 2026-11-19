@@ -26,6 +26,9 @@ import java.util.List;
  * @param sigunguName 시·군·구 명칭, 없으면 null
  * @param themes 코스 콘셉트 목록
  * @param isWriter 현재 요청 회원이 코스 작성자인지 여부
+ * @param liked 현재 요청 회원의 코스 좋아요 여부
+ * @param scrapped 현재 요청 회원의 코스 스크랩 여부
+ * @param beforeVisit AI 방문 전 유의사항 목록
  * @param places 코스에 포함된 장소 목록 (순서 오름차순)
  * @param createdAt 코스 생성 일시
  * @param updatedAt 코스 수정 일시, 없으면 null
@@ -94,6 +97,21 @@ public record CourseDetailResponse(
             requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isWriter,
     @Schema(
+            description = "현재 요청 회원의 코스 좋아요 여부입니다. 비회원인 경우 false입니다.",
+            example = "false",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean liked,
+    @Schema(
+            description = "현재 요청 회원의 코스 스크랩 여부입니다. 비회원인 경우 false입니다.",
+            example = "false",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+        boolean scrapped,
+    @Schema(
+            description = "AI 방문 전 유의사항 목록입니다. 없으면 빈 목록을 반환합니다.",
+            example = "[\"웨이팅이 길 수 있으니 사전 예약을 권장합니다.\"]",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+        List<String> beforeVisit,
+    @Schema(
             description = "코스에 포함된 장소 목록입니다. 방문 순서(order) 기준 오름차순으로 정렬됩니다.",
             requiredMode = Schema.RequiredMode.REQUIRED)
         List<CoursePlaceResponse> places,
@@ -126,6 +144,9 @@ public record CourseDetailResponse(
    * @param sigunguName 시·군·구 명칭
    * @param themes 코스 콘셉트 목록
    * @param isWriter 작성자 여부
+   * @param liked 좋아요 여부
+   * @param scrapped 스크랩 여부
+   * @param beforeVisit 방문 전 유의사항 목록
    * @param places 장소 목록
    * @param createdAt 생성 일시
    * @param updatedAt 수정 일시
@@ -133,6 +154,7 @@ public record CourseDetailResponse(
   public CourseDetailResponse {
     themes = themes == null ? List.of() : List.copyOf(themes);
     places = places == null ? List.of() : List.copyOf(places);
+    beforeVisit = beforeVisit == null ? List.of() : List.copyOf(beforeVisit);
   }
 
   /**
@@ -158,6 +180,9 @@ public record CourseDetailResponse(
         result.sigunguName(),
         result.themes(),
         result.isWriter(),
+        result.liked(),
+        result.scrapped(),
+        result.beforeVisit(),
         result.places().stream().map(CoursePlaceResponse::from).toList(),
         result.createdAt(),
         result.updatedAt());

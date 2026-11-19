@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /** 회원이 만든 코스의 기본 정보와 상태를 나타냅니다. */
 @Entity
@@ -44,6 +46,10 @@ public class Course {
 
   @Column(name = "course_summary", length = 500)
   private String courseSummary;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "before_visit")
+  private List<String> beforeVisit = new ArrayList<>();
 
   @Enumerated(EnumType.STRING)
   @Column(name = "transport", length = 30)
@@ -161,6 +167,45 @@ public class Course {
   }
 
   /**
+   * 코스의 공개 범위를 변경합니다.
+   *
+   * @param visibility 변경할 공개 범위
+   */
+  public void changeVisibility(CourseVisibility visibility) {
+    this.visibility = visibility;
+  }
+
+  /**
+   * 코스를 최종 확정(CONFIRMED) 상태로 변경합니다.
+   *
+   * @param confirmedAt 확정 일시
+   */
+  public void confirm(LocalDateTime confirmedAt) {
+    this.status = CourseStatus.ACTIVE;
+    this.updatedAt = confirmedAt;
+  }
+
+  /**
+   * 코스를 소프트 삭제 처리합니다.
+   *
+   * @param deletedAt 삭제 일시
+   */
+  public void softDelete(LocalDateTime deletedAt) {
+    this.status = CourseStatus.DELETED;
+    this.deletedAt = deletedAt;
+  }
+
+  /**
+   * 코스 조회수를 1 증가시킵니다.
+   *
+   * @return 증가된 조회수
+   */
+  public int increaseViewCount() {
+    this.viewCount += 1;
+    return this.viewCount;
+  }
+
+  /**
    * 특정 회원이 이 코스를 복사할 수 있는지 확인합니다. 공개된 확정 코스이거나 본인의 확정 코스인 경우 복사할 수 있습니다. 다른 사람의 비공개 코스나 DRAFT 상태의
    * 코스는 복사할 수 없습니다.
    *
@@ -178,10 +223,10 @@ public class Course {
   }
 
   /**
-   * 특정 회원이 이 코스를 조회할 권한이 있는지 확인합니다. 공개 상태이면서 활성 상태인 코스는 누구나 조회할 수 있으며, 비공개 코스나 DRAFT 코스는 작성자 본인만
+   * 주어진 회원이 이 코스를 조회할 권한이 있는지 확인합니다. 공개 상태이면서 활성 상태인 코스는 누구나 조회할 수 있으며, 비공개 코스나 DRAFT 코스는 작성자 본인만
    * 조회할 수 있습니다.
    *
-   * @param accessorMemberId 조회를 시도하는 회원 식별자, 비회원이면 null
+   * @param accessorMemberId 조회를 요청한 회원 식별자, 비회원이면 null
    * @return 조회 가능 여부
    */
   public boolean canAccess(String accessorMemberId) {
@@ -195,7 +240,7 @@ public class Course {
   }
 
   /**
-   * 특정 회원이 이 코스의 작성자인지 확인합니다.
+   * 주어진 회원이 코스의 작성자인지 확인합니다.
    *
    * @param accessorMemberId 확인할 회원 식별자, 비회원이면 null
    * @return 작성자 여부
@@ -218,6 +263,21 @@ public class Course {
 
   public String getCourseSummary() {
     return courseSummary;
+  }
+
+  public List<String> getBeforeVisit() {
+    return beforeVisit == null ? List.of() : Collections.unmodifiableList(beforeVisit);
+  }
+
+  /**
+   * AI 생성 코스 요약 및 방문 전 유의사항을 갱신합니다.
+   *
+   * @param courseSummary 코스 요약 설명
+   * @param beforeVisit 방문 전 유의사항 목록
+   */
+  public void updateAiCourseDetails(String courseSummary, List<String> beforeVisit) {
+    this.courseSummary = courseSummary;
+    this.beforeVisit = beforeVisit == null ? new ArrayList<>() : new ArrayList<>(beforeVisit);
   }
 
   public CourseTransport getTransport() {

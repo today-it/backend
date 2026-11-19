@@ -33,6 +33,8 @@ import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -446,7 +448,10 @@ class CourseControllerTest {
             true,
             List.of(place),
             now,
-            now);
+            now,
+            false,
+            false,
+            List.of("웨이팅이 있을 수 있습니다."));
     when(courseFacade.getCourseDetail(1, "member-1")).thenReturn(detail);
 
     // when
@@ -466,6 +471,9 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.status").value("DRAFT"))
         .andExpect(jsonPath("$.data.visibility").value("PRIVATE"))
         .andExpect(jsonPath("$.data.isWriter").value(true))
+        .andExpect(jsonPath("$.data.liked").value(false))
+        .andExpect(jsonPath("$.data.scrapped").value(false))
+        .andExpect(jsonPath("$.data.beforeVisit[0]").value("웨이팅이 있을 수 있습니다."))
         .andExpect(jsonPath("$.data.sidoCode").value("11"))
         .andExpect(jsonPath("$.data.sidoName").value("서울특별시"))
         .andExpect(jsonPath("$.data.sigunguCode").value("110"))
@@ -504,7 +512,10 @@ class CourseControllerTest {
             false,
             List.of(),
             now,
-            now);
+            now,
+            false,
+            false,
+            List.of());
     when(courseFacade.getCourseDetail(1, null)).thenReturn(detail);
 
     // when
@@ -516,6 +527,9 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.courseId").value(1))
         .andExpect(jsonPath("$.data.isWriter").value(false))
+        .andExpect(jsonPath("$.data.liked").value(false))
+        .andExpect(jsonPath("$.data.scrapped").value(false))
+        .andExpect(jsonPath("$.data.beforeVisit").isEmpty())
         .andExpect(jsonPath("$.data.places").isEmpty());
   }
 
@@ -543,8 +557,20 @@ class CourseControllerTest {
   @DisplayName("코스에 장소를 정상 추가하고 201과 코스 장소 정보를 반환한다")
   void addsPlaceToCourseSuccessfully() throws Exception {
     // given
+    CoursePlaceDetailResult placeDetail =
+        new CoursePlaceDetailResult(
+            1,
+            10,
+            "블루보틀 삼청",
+            "CAFE_DESSERT",
+            "서울특별시 종로구 북촌로 5길",
+            new BigDecimal("37.58123400"),
+            new BigDecimal("126.98123400"),
+            "https://example.com/place.jpg",
+            1,
+            60);
     when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
-        .thenReturn(new AddCoursePlaceResult(1, 10, 1, 60));
+        .thenReturn(new AddCoursePlaceResult(placeDetail, List.of(placeDetail)));
     String request =
         """
         {
@@ -566,10 +592,11 @@ class CourseControllerTest {
     result
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.coursePlaceId").value(1))
-        .andExpect(jsonPath("$.data.placeId").value(10))
-        .andExpect(jsonPath("$.data.order").value(1))
-        .andExpect(jsonPath("$.data.stayMinute").value(60));
+        .andExpect(jsonPath("$.data.addedPlace.coursePlaceId").value(1))
+        .andExpect(jsonPath("$.data.addedPlace.placeId").value(10))
+        .andExpect(jsonPath("$.data.addedPlace.order").value(1))
+        .andExpect(jsonPath("$.data.addedPlace.stayMinute").value(60))
+        .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade).addPlaceToCourse("member-1", new AddCoursePlaceCommand(1, 10, 1, 60));
   }
 
@@ -693,8 +720,20 @@ class CourseControllerTest {
   @DisplayName("방문 순서와 체류 시간을 생략하면 기본값으로 추가된다")
   void allowsOmittingOrderAndStayMinute() throws Exception {
     // given
+    CoursePlaceDetailResult placeDetail =
+        new CoursePlaceDetailResult(
+            1,
+            10,
+            "블루보틀 삼청",
+            "CAFE_DESSERT",
+            "서울특별시 종로구 북촌로 5길",
+            new BigDecimal("37.58123400"),
+            new BigDecimal("126.98123400"),
+            "https://example.com/place.jpg",
+            1,
+            0);
     when(courseFacade.addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class)))
-        .thenReturn(new AddCoursePlaceResult(1, 10, 1, 0));
+        .thenReturn(new AddCoursePlaceResult(placeDetail, List.of(placeDetail)));
     String request =
         """
         {
@@ -714,8 +753,9 @@ class CourseControllerTest {
     result
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.order").value(1))
-        .andExpect(jsonPath("$.data.stayMinute").value(0));
+        .andExpect(jsonPath("$.data.addedPlace.order").value(1))
+        .andExpect(jsonPath("$.data.addedPlace.stayMinute").value(0))
+        .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade).addPlaceToCourse("member-1", new AddCoursePlaceCommand(1, 10, null, 0));
   }
 
@@ -810,6 +850,9 @@ class CourseControllerTest {
   @DisplayName("코스 장소의 방문 순서를 일괄 변경하고 200과 성공 결과를 반환한다")
   void updatesCoursePlaceOrdersSuccessfully() throws Exception {
     // given
+    when(courseFacade.updateCoursePlaceOrders(
+            eq("member-1"), any(UpdateCoursePlaceOrdersCommand.class)))
+        .thenReturn(new UpdateCoursePlaceOrdersResult(List.of()));
     String request =
         """
         {
@@ -829,7 +872,7 @@ class CourseControllerTest {
     result
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data").doesNotExist());
+        .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade)
         .updateCoursePlaceOrders(
             "member-1", new UpdateCoursePlaceOrdersCommand(1, List.of(3, 1, 2)));
@@ -948,8 +991,12 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("코스 장소를 정상적으로 삭제하고 200을 반환한다")
+  @DisplayName("코스 장소를 정상적으로 삭제하고 200과 삭제 결과를 반환한다")
   void deletesCoursePlaceSuccessfully() throws Exception {
+    // given
+    when(courseFacade.removePlaceFromCourse("member-1", 1, 10))
+        .thenReturn(new RemoveCoursePlaceResult(10, List.of()));
+
     // when
     ResultActions result =
         mvc.perform(
@@ -960,7 +1007,8 @@ class CourseControllerTest {
     result
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data").doesNotExist());
+        .andExpect(jsonPath("$.data.deletedCoursePlaceId").value(10))
+        .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade).removePlaceFromCourse("member-1", 1, 10);
   }
 
@@ -1007,7 +1055,7 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("코스를 정상적으로 영구 삭제하고 200을 반환한다")
+  @DisplayName("코스를 정상적으로 영구 삭제하고 204를 반환한다")
   void deletesCourseSuccessfully() throws Exception {
     // when
     ResultActions result =
@@ -1016,10 +1064,7 @@ class CourseControllerTest {
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
     // then
-    result
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data").doesNotExist());
+    result.andExpect(status().isNoContent());
     verify(courseFacade).deleteCourse("member-1", 1);
   }
 
@@ -1043,10 +1088,12 @@ class CourseControllerTest {
   }
 
   @Test
-  @DisplayName("확정된 코스를 정상적으로 복사하고 201과 복사된 코스 ID를 반환한다")
+  @DisplayName("확정된 코스를 정상적으로 복사하고 201과 복사된 코스 정보를 반환한다")
   void copiesCourseSuccessfully() throws Exception {
     // given
-    when(courseFacade.copyCourse("member-1", 1)).thenReturn(new CopyCourseResult(2));
+    LocalDateTime now = LocalDateTime.of(2026, 11, 19, 12, 0);
+    when(courseFacade.copyCourse("member-1", 1))
+        .thenReturn(new CopyCourseResult(2, 1, null, CourseStatus.DRAFT, List.of(), now));
 
     // when
     ResultActions result =
@@ -1058,7 +1105,12 @@ class CourseControllerTest {
     result
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
-        .andExpect(jsonPath("$.data.courseId").value(2));
+        .andExpect(jsonPath("$.data.courseId").value(2))
+        .andExpect(jsonPath("$.data.originalCourseId").value(1))
+        .andExpect(jsonPath("$.data.title").doesNotExist())
+        .andExpect(jsonPath("$.data.status").value("DRAFT"))
+        .andExpect(jsonPath("$.data.places").isArray())
+        .andExpect(jsonPath("$.data.createdAt").exists());
     verify(courseFacade).copyCourse("member-1", 1);
   }
 

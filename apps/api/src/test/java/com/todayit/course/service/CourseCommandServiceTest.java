@@ -24,8 +24,7 @@ import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
-import com.todayit.course.service.model.AddCoursePlaceResult;
-import com.todayit.course.service.model.CopyCourseResult;
+import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CreateCourseResult;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -92,12 +91,13 @@ class CourseCommandServiceTest {
 
     // when
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, null, 60);
-    AddCoursePlaceResult result = service.addPlace("member-1", command);
+    AddCoursePlaceEntities result = service.addPlace("member-1", command);
 
     // then
-    assertThat(result.placeId()).isEqualTo(10);
-    assertThat(result.order()).isEqualTo(1);
-    assertThat(result.stayMinute()).isEqualTo(60);
+    assertThat(result.addedPlace().getPlaceId()).isEqualTo(10);
+    assertThat(result.addedPlace().getOrder()).isEqualTo(1);
+    assertThat(result.addedPlace().getStayMinute()).isEqualTo(60);
+    assertThat(result.places()).hasSize(1);
     verify(courses).saveAndFlush(course);
   }
 
@@ -120,12 +120,13 @@ class CourseCommandServiceTest {
 
     // when
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, null, 45);
-    AddCoursePlaceResult result = service.addPlace("member-1", command);
+    AddCoursePlaceEntities result = service.addPlace("member-1", command);
 
     // then
-    assertThat(result.placeId()).isEqualTo(10);
-    assertThat(result.order()).isEqualTo(2);
-    assertThat(result.stayMinute()).isEqualTo(45);
+    assertThat(result.addedPlace().getPlaceId()).isEqualTo(10);
+    assertThat(result.addedPlace().getOrder()).isEqualTo(2);
+    assertThat(result.addedPlace().getStayMinute()).isEqualTo(45);
+    assertThat(result.places()).hasSize(2);
     verify(courses).saveAndFlush(course);
   }
 
@@ -197,13 +198,13 @@ class CourseCommandServiceTest {
 
     // when
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 30, 2, 30);
-    AddCoursePlaceResult result = service.addPlace("member-1", command);
+    AddCoursePlaceEntities result = service.addPlace("member-1", command);
 
     // then
-    assertThat(result.placeId()).isEqualTo(30);
-    assertThat(result.order()).isEqualTo(2);
-    assertThat(result.stayMinute()).isEqualTo(30);
-    assertThat(course.getCoursePlaces()).hasSize(3);
+    assertThat(result.addedPlace().getPlaceId()).isEqualTo(30);
+    assertThat(result.addedPlace().getOrder()).isEqualTo(2);
+    assertThat(result.addedPlace().getStayMinute()).isEqualTo(30);
+    assertThat(result.places()).hasSize(3);
     assertThat(course.getCoursePlaces().get(1).getOrder()).isEqualTo(3);
     verify(courses).flush();
     verify(courses).saveAndFlush(course);
@@ -233,9 +234,10 @@ class CourseCommandServiceTest {
     // when
     UpdateCoursePlaceOrdersCommand command =
         new UpdateCoursePlaceOrdersCommand(1, List.of(102, 101));
-    service.updatePlaceOrders("member-1", command);
+    List<CoursePlace> result = service.updatePlaceOrders("member-1", command);
 
     // then
+    assertThat(result).hasSize(2);
     assertThat(p2.getOrder()).isEqualTo(1);
     assertThat(p1.getOrder()).isEqualTo(2);
     verify(courses).flush();
@@ -293,10 +295,10 @@ class CourseCommandServiceTest {
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
-    service.removePlace("member-1", 1, 102);
+    List<CoursePlace> remainingPlaces = service.removePlace("member-1", 1, 102);
 
     // then
-    assertThat(course.getCoursePlaces()).hasSize(2);
+    assertThat(remainingPlaces).hasSize(2);
     assertThat(p1.getOrder()).isEqualTo(1);
     assertThat(p3.getOrder()).isEqualTo(2);
     verify(courses).flush();
@@ -325,10 +327,10 @@ class CourseCommandServiceTest {
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
-    service.removePlace("member-1", 1, 102);
+    List<CoursePlace> remainingPlaces = service.removePlace("member-1", 1, 102);
 
     // then
-    assertThat(course.getCoursePlaces()).hasSize(1);
+    assertThat(remainingPlaces).hasSize(1);
     assertThat(p1.getOrder()).isEqualTo(1);
     verify(courses, never()).flush();
     verify(courses).saveAndFlush(course);
@@ -354,9 +356,10 @@ class CourseCommandServiceTest {
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // when
-    service.removePlace("member-1", 1, 101);
+    List<CoursePlace> remainingPlaces = service.removePlace("member-1", 1, 101);
 
     // then
+    assertThat(remainingPlaces).isEmpty();
     assertThat(course.getCoursePlaces()).isEmpty();
     assertThat(course.getStatus()).isEqualTo(CourseStatus.DRAFT);
     verify(courses).saveAndFlush(course);
@@ -505,10 +508,10 @@ class CourseCommandServiceTest {
             });
 
     // when
-    CopyCourseResult result = service.copyCourse("member-2", 1);
+    Course result = service.copyCourse("member-2", 1);
 
     // then
-    assertThat(result.courseId()).isEqualTo(2);
+    assertThat(result.getCourseId()).isEqualTo(2);
 
     ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
     verify(courses).save(captor.capture());
@@ -557,10 +560,10 @@ class CourseCommandServiceTest {
             });
 
     // when
-    CopyCourseResult result = service.copyCourse("member-1", 1);
+    Course result = service.copyCourse("member-1", 1);
 
     // then
-    assertThat(result.courseId()).isEqualTo(3);
+    assertThat(result.getCourseId()).isEqualTo(3);
     verify(courses).save(any(Course.class));
   }
 

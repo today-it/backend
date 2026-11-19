@@ -2,23 +2,31 @@ package com.todayit.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.todayit.course.entity.Course;
+import com.todayit.course.entity.CoursePlace;
+import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.PlaceNotFoundException;
+import com.todayit.course.repository.CourseMemberLikeRepository;
+import com.todayit.course.repository.CourseScrapRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
+import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +45,8 @@ class CourseFacadeTest {
   @Mock private CourseCommandService courses;
   @Mock private CourseQueryService courseQueryService;
   @Mock private PlaceCourseQueryService placeCourseQueryService;
+  @Mock private CourseMemberLikeRepository courseMemberLikeRepository;
+  @Mock private CourseScrapRepository courseScrapRepository;
 
   @InjectMocks private CourseFacade facade;
 
@@ -67,15 +77,35 @@ class CourseFacadeTest {
   void addsPlaceToCourseSuccessfully() {
     // given
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 10, 1, 60);
-    AddCoursePlaceResult expected = new AddCoursePlaceResult(100, 10, 1, 60);
+    CoursePlace addedPlace = mock(CoursePlace.class);
+    when(addedPlace.getCoursePlaceId()).thenReturn(100);
+    when(addedPlace.getPlaceId()).thenReturn(10);
+    when(addedPlace.getOrder()).thenReturn(1);
+    when(addedPlace.getStayMinute()).thenReturn(60);
+
+    AddCoursePlaceEntities entities = new AddCoursePlaceEntities(addedPlace, List.of(addedPlace));
     when(placeCourseQueryService.existsActivePlace(10)).thenReturn(true);
-    when(courses.addPlace("member-1", command)).thenReturn(expected);
+    when(courses.addPlace("member-1", command)).thenReturn(entities);
+    when(placeCourseQueryService.findPlacesByIds(List.of(10)))
+        .thenReturn(
+            Map.of(
+                10,
+                new CoursePlaceItem(
+                    10,
+                    "블루보틀 삼청",
+                    "CAFE_DESSERT",
+                    "서울특별시 종로구 북촌로 5길",
+                    BigDecimal.valueOf(37.5),
+                    BigDecimal.valueOf(127.0),
+                    "image.jpg")));
 
     // when
     AddCoursePlaceResult result = facade.addPlaceToCourse("member-1", command);
 
     // then
-    assertThat(result).isEqualTo(expected);
+    assertThat(result.addedPlace().coursePlaceId()).isEqualTo(100);
+    assertThat(result.addedPlace().name()).isEqualTo("블루보틀 삼청");
+    assertThat(result.places()).hasSize(1);
     verify(courses).addPlace("member-1", command);
   }
 
@@ -120,6 +150,11 @@ class CourseFacadeTest {
     when(courseQueryService.getCourse(1)).thenReturn(course);
     when(regions.getCourseRegionSummary(List.of())).thenReturn(regionResult);
     when(placeCourseQueryService.findPlacesByIds(List.of(10))).thenReturn(Map.of(10, placeItem));
+    when(courseMemberLikeRepository.existsByMemberIdAndCourseCourseId("member-1", 1))
+        .thenReturn(true);
+    when(courseScrapRepository.existsByMemberIdAndCourseCourseIdAndActiveTrueAndDeletedFalse(
+            "member-1", 1))
+        .thenReturn(false);
 
     // when
     CourseDetailResult result = facade.getCourseDetail(1, "member-1");
@@ -129,6 +164,9 @@ class CourseFacadeTest {
     assertThat(result.sidoName()).isEqualTo("서울특별시");
     assertThat(result.sigunguName()).isEqualTo("종로구");
     assertThat(result.isWriter()).isTrue();
+    assertThat(result.liked()).isTrue();
+    assertThat(result.scrapped()).isFalse();
+    assertThat(result.beforeVisit()).isEmpty();
     assertThat(result.places()).hasSize(1);
     assertThat(result.places().get(0).name()).isEqualTo("블루보틀 삼청");
     assertThat(result.places().get(0).stayMinute()).isEqualTo(60);
@@ -150,7 +188,6 @@ class CourseFacadeTest {
 
     when(courseQueryService.getCourse(1)).thenReturn(course);
     when(regions.getCourseRegionSummary(List.of())).thenReturn(null);
-    when(placeCourseQueryService.findPlacesByIds(List.of())).thenReturn(Map.of());
 
     // when
     CourseDetailResult result = facade.getCourseDetail(1, "member-1");
@@ -162,6 +199,9 @@ class CourseFacadeTest {
     assertThat(result.sigunguCode()).isNull();
     assertThat(result.sigunguName()).isNull();
     assertThat(result.places()).isEmpty();
+    assertThat(result.liked()).isFalse();
+    assertThat(result.scrapped()).isFalse();
+    assertThat(result.beforeVisit()).isEmpty();
   }
 
   @Test
@@ -190,21 +230,65 @@ class CourseFacadeTest {
     // given
     UpdateCoursePlaceOrdersCommand command =
         new UpdateCoursePlaceOrdersCommand(1, List.of(3, 1, 2));
+    CoursePlace p = mock(CoursePlace.class);
+    when(p.getCoursePlaceId()).thenReturn(101);
+    when(p.getPlaceId()).thenReturn(10);
+    when(p.getOrder()).thenReturn(1);
+    when(p.getStayMinute()).thenReturn(60);
+
+    when(courses.updatePlaceOrders("member-1", command)).thenReturn(List.of(p));
+    when(placeCourseQueryService.findPlacesByIds(List.of(10)))
+        .thenReturn(
+            Map.of(
+                10,
+                new CoursePlaceItem(
+                    10,
+                    "장소",
+                    "카페",
+                    "주소",
+                    BigDecimal.valueOf(37.5),
+                    BigDecimal.valueOf(127.0),
+                    "image.jpg")));
 
     // when
-    facade.updateCoursePlaceOrders("member-1", command);
+    UpdateCoursePlaceOrdersResult result = facade.updateCoursePlaceOrders("member-1", command);
 
     // then
+    assertThat(result.places()).hasSize(1);
     verify(courses).updatePlaceOrders("member-1", command);
   }
 
   @Test
-  @DisplayName("코스 장소 삭제를 정상적으로 위임한다")
+  @DisplayName("코스 장소 삭제를 정상적으로 위임하고 남은 장소 목록을 반환한다")
   void removesPlaceFromCourseSuccessfully() {
+    // given
+    CoursePlace remainingPlace = mock(CoursePlace.class);
+    when(remainingPlace.getCoursePlaceId()).thenReturn(20);
+    when(remainingPlace.getPlaceId()).thenReturn(200);
+    when(remainingPlace.getOrder()).thenReturn(1);
+    when(remainingPlace.getStayMinute()).thenReturn(30);
+
+    when(courses.removePlace("member-1", 1, 10)).thenReturn(List.of(remainingPlace));
+    when(placeCourseQueryService.findPlacesByIds(List.of(200)))
+        .thenReturn(
+            Map.of(
+                200,
+                new CoursePlaceItem(
+                    200,
+                    "장소",
+                    "카페",
+                    "주소",
+                    BigDecimal.valueOf(37.5),
+                    BigDecimal.valueOf(127.0),
+                    "image.jpg")));
+
     // when
-    facade.removePlaceFromCourse("member-1", 1, 10);
+    RemoveCoursePlaceResult result = facade.removePlaceFromCourse("member-1", 1, 10);
 
     // then
+    assertThat(result.deletedCoursePlaceId()).isEqualTo(10);
+    assertThat(result.places()).hasSize(1);
+    assertThat(result.places().get(0).coursePlaceId()).isEqualTo(20);
     verify(courses).removePlace("member-1", 1, 10);
   }
 
@@ -222,14 +306,24 @@ class CourseFacadeTest {
   @DisplayName("코스 복사를 정상적으로 위임한다")
   void copiesCourseSuccessfully() {
     // given
-    CopyCourseResult expected = new CopyCourseResult(2);
-    when(courses.copyCourse("member-1", 1)).thenReturn(expected);
+    Course copiedCourse = mock(Course.class);
+    when(copiedCourse.getCourseId()).thenReturn(2);
+    when(copiedCourse.getTitle()).thenReturn(null);
+    when(copiedCourse.getStatus()).thenReturn(CourseStatus.DRAFT);
+    when(copiedCourse.getCreatedAt()).thenReturn(LocalDateTime.of(2026, 11, 19, 12, 0));
+    when(copiedCourse.getCoursePlaces()).thenReturn(List.of());
+
+    when(courses.copyCourse("member-1", 1)).thenReturn(copiedCourse);
 
     // when
     CopyCourseResult result = facade.copyCourse("member-1", 1);
 
     // then
-    assertThat(result).isEqualTo(expected);
+    assertThat(result.courseId()).isEqualTo(2);
+    assertThat(result.originalCourseId()).isEqualTo(1);
+    assertThat(result.title()).isNull();
+    assertThat(result.status()).isEqualTo(CourseStatus.DRAFT);
+    assertThat(result.places()).isEmpty();
     verify(courses).copyCourse("member-1", 1);
   }
 }

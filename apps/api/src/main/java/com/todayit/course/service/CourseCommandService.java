@@ -10,13 +10,11 @@ import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
-import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
-import com.todayit.course.service.model.AddCoursePlaceResult;
-import com.todayit.course.service.model.CopyCourseResult;
+import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CreateCourseResult;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -69,12 +67,11 @@ public class CourseCommandService {
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 코스 장소 추가 조건
-   * @return 추가 결과
+   * @return 추가된 장소 및 전체 장소 엔티티 묶음
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
-   * @throws MaxPlaceDuplicationExceededException 동일한 장소가 이미 최대 허용 횟수(2개)만큼 존재하는 경우
    */
   @Transactional
-  public AddCoursePlaceResult addPlace(String memberId, AddCoursePlaceCommand command) {
+  public AddCoursePlaceEntities addPlace(String memberId, AddCoursePlaceCommand command) {
     Course course =
         courseRepository
             .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
@@ -105,7 +102,7 @@ public class CourseCommandService {
             .findFirst()
             .orElse(coursePlace);
 
-    return AddCoursePlaceResult.from(persistedPlace);
+    return new AddCoursePlaceEntities(persistedPlace, savedCourse.getCoursePlaces());
   }
 
   /**
@@ -113,11 +110,13 @@ public class CourseCommandService {
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 순서 변경 조건
+   * @return 변경된 전체 코스 장소 목록
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
    * @throws InvalidCoursePlaceOrderException 전달된 장소 목록이 유효하지 않은 경우
    */
   @Transactional
-  public void updatePlaceOrders(String memberId, UpdateCoursePlaceOrdersCommand command) {
+  public List<CoursePlace> updatePlaceOrders(
+      String memberId, UpdateCoursePlaceOrdersCommand command) {
     Course course =
         courseRepository
             .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
@@ -130,7 +129,8 @@ public class CourseCommandService {
     course.reorderPlaces(command.coursePlaceIds());
     courseRepository.flush();
     course.confirmReorder();
-    courseRepository.saveAndFlush(course);
+    Course savedCourse = courseRepository.saveAndFlush(course);
+    return savedCourse.getCoursePlaces();
   }
 
   /**
@@ -138,10 +138,11 @@ public class CourseCommandService {
    *
    * @param memberId 인증된 작성자 식별자
    * @param command 순서 변경 조건
+   * @return 변경된 전체 코스 장소 목록
    */
   @Transactional
-  public void reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
-    updatePlaceOrders(memberId, command);
+  public List<CoursePlace> reorderPlaces(String memberId, UpdateCoursePlaceOrdersCommand command) {
+    return updatePlaceOrders(memberId, command);
   }
 
   /**
@@ -150,11 +151,12 @@ public class CourseCommandService {
    * @param memberId 인증된 작성자 식별자
    * @param courseId 코스 식별자
    * @param coursePlaceId 삭제할 코스 장소 식별자
+   * @return 삭제 후 재정렬된 남은 코스 장소 목록
    * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우, 또는 이미 삭제된 코스인 경우
    * @throws CoursePlaceNotFoundException 코스 내에 해당 장소가 없는 경우
    */
   @Transactional
-  public void removePlace(String memberId, int courseId, int coursePlaceId) {
+  public List<CoursePlace> removePlace(String memberId, int courseId, int coursePlaceId) {
     Course course =
         courseRepository
             .findByIdAndMemberIdForUpdate(courseId, memberId)
@@ -170,7 +172,8 @@ public class CourseCommandService {
       courseRepository.flush();
       course.restoreShiftedOrdersForRemoval(subsequentPlaces);
     }
-    courseRepository.saveAndFlush(course);
+    Course savedCourse = courseRepository.saveAndFlush(course);
+    return savedCourse.getCoursePlaces();
   }
 
   /**
@@ -200,12 +203,12 @@ public class CourseCommandService {
    *
    * @param memberId 인증된 요청 회원 식별자
    * @param courseId 복사할 원본 코스 식별자
-   * @return 생성된 DRAFT 코스 복사 결과
+   * @return 생성된 DRAFT 코스 엔티티
    * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 타인의 비공개 코스인 경우
    * @throws CourseException DRAFT 상태의 코스를 복사하려는 경우
    */
   @Transactional
-  public CopyCourseResult copyCourse(String memberId, int courseId) {
+  public Course copyCourse(String memberId, int courseId) {
     Course sourceCourse =
         courseRepository
             .findById(courseId)
@@ -228,6 +231,6 @@ public class CourseCommandService {
     }
 
     Course copiedDraft = Course.createCopyDraft(memberId, sourceCourse, LocalDateTime.now());
-    return CopyCourseResult.from(courseRepository.save(copiedDraft));
+    return courseRepository.save(copiedDraft);
   }
 }
