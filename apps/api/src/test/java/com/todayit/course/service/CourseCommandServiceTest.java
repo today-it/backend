@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
+import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CourseErrorCode;
@@ -415,5 +416,71 @@ class CourseCommandServiceTest {
     // when & then
     assertThrows(CoursePlaceNotFoundException.class, () -> service.removePlace("member-1", 1, 999));
     verify(courses, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("작성자가 코스를 삭제하면 데이터베이스에서 영구 삭제된다")
+  void deletesCoursePermanentlyWhenWriter() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "삭제할 코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when
+    service.deleteCourse("member-1", 1);
+
+    // then
+    verify(courses).delete(course);
+    verify(courses).flush();
+  }
+
+  @Test
+  @DisplayName("코스 삭제 시 코스가 존재하지 않으면 404 예외를 던진다")
+  void rejectsDeleteCourseWhenNotFound() {
+    // given
+    when(courses.findByIdAndMemberIdForUpdate(999, "member-1")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.deleteCourse("member-1", 999));
+    verify(courses, never()).delete(any());
+  }
+
+  @Test
+  @DisplayName("코스 삭제 시 작성자가 아니면 404 예외를 던진다")
+  void rejectsDeleteCourseWhenNotWriter() {
+    // given
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-2")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.deleteCourse("member-2", 1));
+    verify(courses, never()).delete(any());
+  }
+
+  @Test
+  @DisplayName("코스 삭제 시 이미 탈퇴/제재로 삭제된 코스이면 404 예외를 던진다")
+  void rejectsDeleteCourseWhenAlreadyDeleted() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "삭제된 코스",
+            CourseTransport.WALKING,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "status", CourseStatus.DELETED);
+    when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.deleteCourse("member-1", 1));
+    verify(courses, never()).delete(any());
   }
 }

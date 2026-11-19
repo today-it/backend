@@ -106,6 +106,18 @@ public class CourseFacade {
   }
 
   /**
+   * 코스와 관련 데이터를 영구 삭제합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 삭제할 코스 식별자
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   */
+  @Transactional
+  public void deleteCourse(String memberId, int courseId) {
+    courseCommandService.deleteCourse(memberId, courseId);
+  }
+
+  /**
    * 코스 식별자로 코스 상세 정보를 조회합니다.
    *
    * @param courseId 코스 식별자

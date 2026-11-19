@@ -1004,4 +1004,40 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_PLACE_NOT_FOUND"));
   }
+
+  @Test
+  @DisplayName("코스를 정상적으로 영구 삭제하고 200을 반환한다")
+  void deletesCourseSuccessfully() throws Exception {
+    // when
+    ResultActions result =
+        mvc.perform(
+            delete("/api/v1/courses/1")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data").doesNotExist());
+    verify(courseFacade).deleteCourse("member-1", 1);
+  }
+
+  @Test
+  @DisplayName("코스 삭제 시 코스를 찾을 수 없거나 작성자가 아니면 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnDeleteCourse() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException()).when(courseFacade).deleteCourse("member-1", 999);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            delete("/api/v1/courses/999")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
 }

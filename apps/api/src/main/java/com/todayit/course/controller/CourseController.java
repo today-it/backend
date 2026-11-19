@@ -139,4 +139,19 @@ public class CourseController implements CourseApiDocs {
     courseFacade.removePlaceFromCourse(authentication.getName(), courseId, coursePlaceId);
     return ResponseEntity.ok(CommonResponse.success(null));
   }
+
+  /**
+   * 코스를 영구 삭제합니다.
+   *
+   * @param courseId 삭제할 코스 식별자
+   * @param authentication 인증된 작성자 정보
+   * @return 처리 성공 여부
+   */
+  @Override
+  @DeleteMapping("/{courseId}")
+  public ResponseEntity<CommonResponse<Void>> deleteCourse(
+      @PathVariable int courseId, Authentication authentication) {
+    courseFacade.deleteCourse(authentication.getName(), courseId);
+    return ResponseEntity.ok(CommonResponse.success(null));
+  }
 }

@@ -543,4 +543,78 @@ public interface CourseApiDocs {
       @Parameter(description = "삭제할 코스 장소 식별자입니다.", example = "10", required = true)
           int coursePlaceId,
       @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 코스를 영구 삭제합니다.
+   *
+   * @param courseId 삭제할 코스 식별자
+   * @param authentication 인증된 작성자 정보
+   * @return 처리 성공 여부
+   */
+  @Operation(
+      summary = "코스 삭제",
+      description =
+          "작성자가 본인의 코스를 직접 영구 삭제(물리 삭제)합니다. "
+              + "코스에 연결된 장소, 지역, 테마, 좋아요, 스크랩 등 모든 데이터가 함께 삭제되며 복구할 수 없습니다. "
+              + "작성자 본인만 삭제할 수 있으며, 존재하지 않거나 이미 삭제된 코스 또는 타인의 코스인 경우 404를 반환합니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "코스 삭제 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": null
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 정보 누락, 유효하지 않은 토큰 또는 만료된 로그인 세션",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "인증 필요",
+                        value =
+                            """
+                    {"success":false,"code":"AUTHENTICATION_REQUIRED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스를 찾을 수 없거나 작성자가 아님",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        name = "코스를 찾을 수 없거나 작성자가 아님",
+                        value =
+                            """
+                    {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<Void>> deleteCourse(
+      @Parameter(description = "삭제할 코스 식별자입니다.", example = "1", required = true) int courseId,
+      @Parameter(hidden = true) Authentication authentication);
 }

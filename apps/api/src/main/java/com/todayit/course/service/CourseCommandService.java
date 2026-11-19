@@ -159,4 +159,26 @@ public class CourseCommandService {
     }
     courseRepository.saveAndFlush(course);
   }
+
+  /**
+   * 코스 행을 잠근 뒤 작성자 확인 후 코스와 관련 연관 데이터를 데이터베이스에서 영구 삭제합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 삭제할 코스 식별자
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우, 또는 이미 삭제된 코스인 경우
+   */
+  @Transactional
+  public void deleteCourse(String memberId, int courseId) {
+    Course course =
+        courseRepository
+            .findByIdAndMemberIdForUpdate(courseId, memberId)
+            .orElseThrow(CourseNotFoundException::new);
+    if (!course.isWriter(memberId)
+        || course.getDeletedAt() != null
+        || course.getStatus() == CourseStatus.DELETED) {
+      throw new CourseNotFoundException();
+    }
+    courseRepository.delete(course);
+    courseRepository.flush();
+  }
 }

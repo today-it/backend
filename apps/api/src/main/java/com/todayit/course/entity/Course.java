@@ -84,6 +84,12 @@ public class Course {
   @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CourseTheme> themes = new ArrayList<>();
 
+  @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<CourseMemberLike> likes = new ArrayList<>();
+
+  @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<CourseScrap> scraps = new ArrayList<>();
+
   protected Course() {}
 
   /**
@@ -209,6 +215,14 @@ public class Course {
 
   public List<CoursePlace> getCoursePlaces() {
     return Collections.unmodifiableList(coursePlaces);
+  }
+
+  public List<CourseMemberLike> getLikes() {
+    return Collections.unmodifiableList(likes);
+  }
+
+  public List<CourseScrap> getScraps() {
+    return Collections.unmodifiableList(scraps);
   }
 
   /**

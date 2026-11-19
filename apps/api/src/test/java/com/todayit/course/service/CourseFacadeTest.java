@@ -175,4 +175,14 @@ class CourseFacadeTest {
     // then
     verify(courses).removePlace("member-1", 1, 10);
   }
+
+  @Test
+  @DisplayName("코스 영구 삭제를 정상적으로 위임한다")
+  void deletesCourseSuccessfully() {
+    // when
+    facade.deleteCourse("member-1", 1);
+
+    // then
+    verify(courses).deleteCourse("member-1", 1);
+  }
 }

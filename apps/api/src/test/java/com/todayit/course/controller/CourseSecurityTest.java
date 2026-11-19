@@ -86,4 +86,15 @@ class CourseSecurityTest {
     result.andExpect(status().isUnauthorized());
     verifyNoInteractions(facade);
   }
+
+  @Test
+  @DisplayName("코스 삭제는 비회원 요청을 거부한다")
+  void rejectsAnonymousCourseDeletion() throws Exception {
+    // when
+    ResultActions result = mvc.perform(delete("/api/v1/courses/1"));
+
+    // then
+    result.andExpect(status().isUnauthorized());
+    verifyNoInteractions(facade);
+  }
 }
