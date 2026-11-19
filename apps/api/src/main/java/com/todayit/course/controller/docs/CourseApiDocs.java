@@ -461,7 +461,7 @@ public interface CourseApiDocs {
                       name = "목록이 비어 있음",
                       value =
                           """
-                      {"success":false,"code":"INVALID_REQUEST","message":"요청값이 올바르지 않습니다."}
+                      {"success":false,"code":"INVALID_COURSE_PLACE_ORDER","message":"방문 순서는 1 이상이어야 합니다."}
                       """)
                 })),
     @ApiResponse(
