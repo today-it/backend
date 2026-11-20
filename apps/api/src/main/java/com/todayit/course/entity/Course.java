@@ -458,24 +458,6 @@ public class Course {
   }
 
   /**
-   * 임시 음수 순서로 설정된 장소들을 새로운 방문 순서(1부터 시작)로 최종 확정합니다.
-   *
-   * @param newOrderPlaceIds 새로운 방문 순서대로 나열된 코스 장소 식별자 목록
-   */
-  public void applyNewOrders(List<Integer> newOrderPlaceIds) {
-    Map<Integer, CoursePlace> map =
-        coursePlaces.stream()
-            .collect(Collectors.toMap(CoursePlace::getCoursePlaceId, Function.identity()));
-    for (int order = 1; order <= newOrderPlaceIds.size(); order++) {
-      int coursePlaceId = newOrderPlaceIds.get(order - 1);
-      CoursePlace cp = map.get(coursePlaceId);
-      if (cp != null) {
-        cp.setOrder(order);
-      }
-    }
-  }
-
-  /**
    * 삭제 대상 장소의 뒤에 위치한 장소들을 임시 음수 순서로 설정합니다.
    *
    * @param coursePlaceId 삭제할 코스 장소 식별자

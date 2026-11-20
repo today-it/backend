@@ -240,7 +240,7 @@ class CourseCreationRepositoryTest {
     // when: [id3, id1, id2] 순서로 변경
     course.reorderPlaces(List.of(id3, id1, id2));
     courses.flush();
-    course.applyNewOrders(List.of(id3, id1, id2));
+    course.confirmReorder();
     Course savedCourse = courses.saveAndFlush(course);
 
     // then
