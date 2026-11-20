@@ -2,6 +2,8 @@ package com.todayit.course.service;
 
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
+import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
@@ -199,7 +201,7 @@ public class CourseFacade {
   @Transactional(readOnly = true)
   public CourseDetailResult getCourseDetail(int courseId, String memberId) {
     Course course = courseQueryService.getCourse(courseId);
-    if (!course.canAccess(memberId)) {
+    if (!canAccess(course, memberId)) {
       throw new CourseNotFoundException();
     }
 
@@ -234,7 +236,7 @@ public class CourseFacade {
         regionResult != null ? regionResult.sigunguCode() : null,
         regionResult != null ? regionResult.sigunguName() : null,
         themeNames,
-        course.isWriter(memberId),
+        memberId != null && course.getMemberId().equals(memberId),
         places,
         course.getCreatedAt(),
         course.getUpdatedAt(),
@@ -275,5 +277,16 @@ public class CourseFacade {
                   cp.getStayMinute());
             })
         .toList();
+  }
+
+  private boolean canAccess(Course course, String memberId) {
+    if (course.getDeletedAt() != null || course.getStatus() == CourseStatus.DELETED) {
+      return false;
+    }
+    if (course.getVisibility() == CourseVisibility.PUBLIC
+        && course.getStatus() == CourseStatus.ACTIVE) {
+      return true;
+    }
+    return memberId != null && course.getMemberId().equals(memberId);
   }
 }

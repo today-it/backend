@@ -215,7 +215,7 @@ class CoursePlaceConcurrencyTest {
             executor.submit(
                 () -> {
                   if (reorder) {
-                    service.reorderPlaces(
+                    service.updatePlaceOrders(
                         "other-member", new UpdateCoursePlaceOrdersCommand(courseId, List.of(1)));
                   } else {
                     service.addPlace(

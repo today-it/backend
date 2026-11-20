@@ -134,7 +134,7 @@ class CourseFacadeTest {
             null,
             List.of(),
             LocalDateTime.now());
-    course.addPlace(10, null, 60);
+    addPlace(course, 10, null, 60);
 
     CourseRegionResult regionResult = new CourseRegionResult("11", "서울특별시", "110", "종로구");
     CoursePlaceItem placeItem =
@@ -325,5 +325,16 @@ class CourseFacadeTest {
     assertThat(result.status()).isEqualTo(CourseStatus.DRAFT);
     assertThat(result.places()).isEmpty();
     verify(courses).copyCourse("member-1", 1);
+  }
+
+  private CoursePlace addPlace(
+      Course course, int placeId, Integer targetOrder, Integer stayMinute) {
+    int maxOrder =
+        course.getCoursePlaces().stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
+    int assignedOrder =
+        (targetOrder == null || targetOrder > maxOrder) ? maxOrder + 1 : Math.max(1, targetOrder);
+    CoursePlace cp = CoursePlace.create(course, placeId, assignedOrder, stayMinute);
+    course.getCoursePlaces().add(cp);
+    return cp;
   }
 }

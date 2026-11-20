@@ -42,18 +42,31 @@ public class CoursePlace {
   protected CoursePlace() {}
 
   /**
-   * 테스트 및 내부 생성을 위한 생성자입니다.
+   * 코스 장소 엔티티를 생성합니다.
    *
    * @param course 코스 엔티티
    * @param placeId 장소 식별자
    * @param order 방문 순서
    * @param stayMinute 머무는 시간(분), 미입력 시 null
    */
-  public CoursePlace(Course course, int placeId, int order, Integer stayMinute) {
+  private CoursePlace(Course course, int placeId, int order, Integer stayMinute) {
     this.course = course;
     this.placeId = placeId;
     this.order = order;
     this.stayMinute = stayMinute;
+  }
+
+  /**
+   * 코스 장소 엔티티를 생성합니다.
+   *
+   * @param course 코스 엔티티
+   * @param placeId 장소 식별자
+   * @param order 방문 순서
+   * @param stayMinute 머무는 시간(분), 미입력 시 null
+   * @return 생성된 CoursePlace 엔티티
+   */
+  public static CoursePlace create(Course course, int placeId, int order, Integer stayMinute) {
+    return new CoursePlace(course, placeId, order, stayMinute);
   }
 
   public int getCoursePlaceId() {

@@ -114,7 +114,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    course.addPlace(10, null, 60);
+    addPlace(course, 10, null, 60);
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -143,8 +143,8 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    course.addPlace(10, null, 60);
-    course.addPlace(10, null, 45);
+    addPlace(course, 10, null, 60);
+    addPlace(course, 10, null, 45);
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
 
     // when & then
@@ -191,8 +191,8 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    course.addPlace(10, null, 60);
-    course.addPlace(20, null, 45);
+    addPlace(course, 10, null, 60);
+    addPlace(course, 20, null, 45);
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
     when(courses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -223,8 +223,8 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
-    CoursePlace p2 = course.addPlace(20, null, 45);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
+    CoursePlace p2 = addPlace(course, 20, null, 45);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(p2, "coursePlaceId", 102);
 
@@ -257,7 +257,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
 
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
@@ -284,9 +284,9 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
-    CoursePlace p2 = course.addPlace(20, null, 45);
-    CoursePlace p3 = course.addPlace(30, null, 30);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
+    CoursePlace p2 = addPlace(course, 20, null, 45);
+    CoursePlace p3 = addPlace(course, 30, null, 30);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(p2, "coursePlaceId", 102);
     ReflectionTestUtils.setField(p3, "coursePlaceId", 103);
@@ -318,8 +318,8 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
-    CoursePlace p2 = course.addPlace(20, null, 45);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
+    CoursePlace p2 = addPlace(course, 20, null, 45);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(p2, "coursePlaceId", 102);
 
@@ -349,7 +349,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
 
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
@@ -400,7 +400,7 @@ class CourseCommandServiceTest {
             null,
             List.of(),
             LocalDateTime.now());
-    CoursePlace p1 = course.addPlace(10, null, 60);
+    CoursePlace p1 = addPlace(course, 10, null, 60);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
 
     when(courses.findByIdAndMemberIdForUpdate(1, "member-1")).thenReturn(Optional.of(course));
@@ -493,8 +493,8 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(sourceCourse, "status", CourseStatus.ACTIVE);
     ReflectionTestUtils.setField(sourceCourse, "visibility", CourseVisibility.PUBLIC);
 
-    CoursePlace p1 = sourceCourse.addPlace(10, 1, 60);
-    CoursePlace p2 = sourceCourse.addPlace(20, 2, 45);
+    CoursePlace p1 = addPlace(sourceCourse, 10, 1, 60);
+    CoursePlace p2 = addPlace(sourceCourse, 20, 2, 45);
     ReflectionTestUtils.setField(p1, "coursePlaceId", 101);
     ReflectionTestUtils.setField(p2, "coursePlaceId", 102);
 
@@ -632,5 +632,16 @@ class CourseCommandServiceTest {
     LocalDateTime startAt = LocalDateTime.of(2026, 12, 1, 10, 0);
     return new CreateCourseCommand(
         "종로 데이트", List.of("감성적"), startAt, startAt.plusHours(4), CourseTransport.WALKING);
+  }
+
+  private CoursePlace addPlace(
+      Course course, int placeId, Integer targetOrder, Integer stayMinute) {
+    int maxOrder =
+        course.getCoursePlaces().stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
+    int assignedOrder =
+        (targetOrder == null || targetOrder > maxOrder) ? maxOrder + 1 : Math.max(1, targetOrder);
+    CoursePlace cp = CoursePlace.create(course, placeId, assignedOrder, stayMinute);
+    course.getCoursePlaces().add(cp);
+    return cp;
   }
 }
