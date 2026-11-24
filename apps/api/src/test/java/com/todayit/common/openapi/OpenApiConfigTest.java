@@ -5,6 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
+import io.swagger.v3.oas.models.responses.ApiResponses;
 import java.lang.reflect.Method;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -69,6 +74,78 @@ class OpenApiConfigTest {
     assertThat(operation.getSecurity()).hasSize(1);
     boolean hasEmptyItem = operation.getSecurity().stream().anyMatch(Map::isEmpty);
     assertThat(hasEmptyItem).isFalse();
+  }
+
+  @Test
+  @DisplayName("와일드카드 스키마가 application/json 응답으로 정상 병합되고 와일드카드는 제거된다")
+  void mergesWildcardSchemaIntoApplicationJson() throws Exception {
+    // given
+    OperationCustomizer customizer = config.responseSchemaCustomizer();
+    io.swagger.v3.oas.models.Operation operation = new io.swagger.v3.oas.models.Operation();
+    ApiResponses responses = new ApiResponses();
+    ApiResponse response = new ApiResponse();
+    Content content = new Content();
+
+    MediaType wildcard = new MediaType();
+    Schema<?> schema = new Schema<>();
+    schema.set$ref("#/components/schemas/TestResponse");
+    wildcard.setSchema(schema);
+
+    MediaType json = new MediaType();
+    json.setExample("{\"test\": true}");
+
+    content.addMediaType("*/*", wildcard);
+    content.addMediaType("application/json", json);
+    response.setContent(content);
+    responses.addApiResponse("200", response);
+    operation.setResponses(responses);
+
+    Method method = TestController.class.getMethod("requiredAuthMethod");
+    HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
+
+    // when
+    customizer.customize(operation, handlerMethod);
+
+    // then
+    assertThat(content).doesNotContainKey("*/*");
+    assertThat(content).containsKey("application/json");
+    assertThat(content.get("application/json").getSchema()).isNotNull();
+    assertThat(content.get("application/json").getSchema().get$ref())
+        .isEqualTo("#/components/schemas/TestResponse");
+  }
+
+  @Test
+  @DisplayName("와일드카드만 있는 응답은 application/json으로 변환된다")
+  void convertsWildcardOnlyToApplicationJson() throws Exception {
+    // given
+    OperationCustomizer customizer = config.responseSchemaCustomizer();
+    io.swagger.v3.oas.models.Operation operation = new io.swagger.v3.oas.models.Operation();
+    ApiResponses responses = new ApiResponses();
+    ApiResponse response = new ApiResponse();
+    Content content = new Content();
+
+    MediaType wildcard = new MediaType();
+    Schema<?> schema = new Schema<>();
+    schema.set$ref("#/components/schemas/TestResponse");
+    wildcard.setSchema(schema);
+
+    content.addMediaType("*/*", wildcard);
+    response.setContent(content);
+    responses.addApiResponse("200", response);
+    operation.setResponses(responses);
+
+    Method method = TestController.class.getMethod("requiredAuthMethod");
+    HandlerMethod handlerMethod = new HandlerMethod(new TestController(), method);
+
+    // when
+    customizer.customize(operation, handlerMethod);
+
+    // then
+    assertThat(content).doesNotContainKey("*/*");
+    assertThat(content).containsKey("application/json");
+    assertThat(content.get("application/json").getSchema()).isNotNull();
+    assertThat(content.get("application/json").getSchema().get$ref())
+        .isEqualTo("#/components/schemas/TestResponse");
   }
 
   static class TestController {

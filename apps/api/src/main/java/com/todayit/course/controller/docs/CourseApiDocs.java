@@ -51,6 +51,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "201",
         description = "코스 생성 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -153,6 +154,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "코스 상세 조회 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -247,6 +249,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "201",
         description = "코스 장소 추가 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -412,6 +415,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "코스 장소 순서 일괄 변경 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -525,6 +529,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "코스 장소 삭제 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -680,6 +685,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "201",
         description = "코스 복사 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -784,6 +790,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "201",
         description = "코스 좋아요 등록 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -872,6 +879,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "코스 공개 범위 변경 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -968,6 +976,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "코스 생성 조건 수정 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -1082,6 +1091,7 @@ public interface CourseApiDocs {
     @ApiResponse(
         responseCode = "200",
         description = "이동수단 변경 성공",
+        useReturnTypeSchema = true,
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
