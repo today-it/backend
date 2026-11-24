@@ -1,5 +1,6 @@
 package com.todayit.course.service;
 
+import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
@@ -22,18 +23,25 @@ import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.MyCourseCardResult;
+import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 행정 지역 검증과 코스 생성 및 조회를 조정합니다. */
 @Service
-public class CourseFacade {
+public class CourseFacade implements MemberCourseQueryService {
 
   private final RegionQueryService regionQueryService;
   private final CourseCommandService courseCommandService;
@@ -294,5 +302,102 @@ public class CourseFacade {
       return true;
     }
     return memberId != null && course.getMemberId().equals(memberId);
+  }
+
+  /**
+   * 회원이 작성한 코스 목록을 상태 조건 및 페이징에 맞게 조회합니다.
+   *
+   * @param memberId 회원 식별자
+   * @param status 코스 상태 필터, null이면 DELETED 제외 전체 조회
+   * @param page 페이지 번호
+   * @param size 페이지 크기
+   * @param sort 정렬 기준
+   * @return 내 코스 카드 페이지
+   */
+  @Override
+  @Transactional(readOnly = true)
+  public PageResult<MyCourseCardResult> findMyCourses(
+      String memberId, CourseStatus status, int page, int size, MyCourseSort sort) {
+    Sort order =
+        sort == MyCourseSort.OLDEST
+            ? Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("courseId"))
+            : Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("courseId"));
+
+    Page<Course> coursePage =
+        courseQueryService.findMyCourses(memberId, status, PageRequest.of(page, size, order));
+    List<Course> courses = coursePage.getContent();
+
+    if (courses.isEmpty()) {
+      return new PageResult<>(
+          List.of(), coursePage.getNumber(), coursePage.getSize(), coursePage.getTotalElements());
+    }
+
+    List<Integer> firstPlaceIds =
+        courses.stream()
+            .map(
+                c ->
+                    c.getCoursePlaces().stream()
+                        .min(Comparator.comparingInt(CoursePlace::getOrder))
+                        .map(CoursePlace::getPlaceId)
+                        .orElse(null))
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    Map<Integer, CoursePlaceItem> placeMap =
+        firstPlaceIds.isEmpty() ? Map.of() : placeCourseQueryService.findPlacesByIds(firstPlaceIds);
+
+    List<Integer> courseIds = courses.stream().map(Course::getCourseId).toList();
+    List<Object[]> likeCountList = courseMemberLikeRepository.countByCourseIds(courseIds);
+    Map<Integer, Long> likeCountMap = new HashMap<>();
+    for (Object[] row : likeCountList) {
+      likeCountMap.put((Integer) row[0], (Long) row[1]);
+    }
+
+    List<MyCourseCardResult> cardList =
+        courses.stream()
+            .map(
+                course -> {
+                  List<String> themes =
+                      course.getThemes().stream().map(ct -> ct.getTheme().getName()).toList();
+
+                  List<Integer> regionIds =
+                      course.getRegions().stream().map(RegionCourse::getRegionId).toList();
+                  CourseRegionResult regionSummary =
+                      regionQueryService.getCourseRegionSummary(regionIds);
+
+                  Integer firstPlaceId =
+                      course.getCoursePlaces().stream()
+                          .min(Comparator.comparingInt(CoursePlace::getOrder))
+                          .map(CoursePlace::getPlaceId)
+                          .orElse(null);
+
+                  String thumbnailUrl = null;
+                  if (firstPlaceId != null && placeMap.containsKey(firstPlaceId)) {
+                    thumbnailUrl = placeMap.get(firstPlaceId).imageUrl();
+                  }
+
+                  long likeCount = likeCountMap.getOrDefault(course.getCourseId(), 0L);
+
+                  return new MyCourseCardResult(
+                      course.getCourseId(),
+                      course.getTitle(),
+                      course.getStatus(),
+                      course.getVisibility(),
+                      thumbnailUrl,
+                      course.getCoursePlaces().size(),
+                      regionSummary != null ? regionSummary.sidoName() : null,
+                      regionSummary != null ? regionSummary.sigunguName() : null,
+                      themes,
+                      likeCount,
+                      course.getStartAt(),
+                      course.getEndAt(),
+                      course.getCreatedAt(),
+                      course.getUpdatedAt());
+                })
+            .toList();
+
+    return new PageResult<>(
+        cardList, coursePage.getNumber(), coursePage.getSize(), coursePage.getTotalElements());
   }
 }

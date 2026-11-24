@@ -2,15 +2,19 @@ package com.todayit.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
+import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
@@ -26,6 +30,8 @@ import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.MyCourseCardResult;
+import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import java.math.BigDecimal;
@@ -38,6 +44,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class CourseFacadeTest {
@@ -352,5 +361,61 @@ class CourseFacadeTest {
     // then
     assertThat(result).isEqualTo(expected);
     verify(courses).likeCourse(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("회원의 코스 목록을 정상적으로 조회하고 카드 모델 페이지로 조합한다")
+  void findsMyCoursesSuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "내 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 11, 24, 10, 0),
+            LocalDateTime.of(2026, 11, 24, 18, 0),
+            List.of(),
+            LocalDateTime.of(2026, 11, 24, 9, 0));
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+    addPlace(course, 10, 1, 30);
+
+    when(courseQueryService.findMyCourses(
+            eq("member-1"), eq(CourseStatus.ACTIVE), any(PageRequest.class)))
+        .thenReturn(new PageImpl<>(List.of(course), PageRequest.of(0, 20), 1));
+    when(placeCourseQueryService.findPlacesByIds(List.of(10)))
+        .thenReturn(
+            Map.of(
+                10,
+                new CoursePlaceItem(
+                    10,
+                    "장소 1",
+                    "CAFE",
+                    "주소 1",
+                    BigDecimal.valueOf(37.1),
+                    BigDecimal.valueOf(127.1),
+                    "http://image.jpg")));
+    when(courseMemberLikeRepository.countByCourseIds(List.of(1)))
+        .thenReturn(List.<Object[]>of(new Object[] {1, 7L}));
+    when(regions.getCourseRegionSummary(List.of()))
+        .thenReturn(new CourseRegionResult("11", "서울특별시", "110", "종로구"));
+
+    // when
+    PageResult<MyCourseCardResult> result =
+        facade.findMyCourses("member-1", CourseStatus.ACTIVE, 0, 20, MyCourseSort.LATEST);
+
+    // then
+    assertThat(result.totalElements()).isEqualTo(1L);
+    assertThat(result.content()).hasSize(1);
+    MyCourseCardResult card = result.content().get(0);
+    assertThat(card.courseId()).isEqualTo(1);
+    assertThat(card.title()).isEqualTo("내 코스");
+    assertThat(card.status()).isEqualTo(CourseStatus.ACTIVE);
+    assertThat(card.thumbnailUrl()).isEqualTo("http://image.jpg");
+    assertThat(card.placeCount()).isEqualTo(1);
+    assertThat(card.likeCount()).isEqualTo(7L);
+    assertThat(card.sidoName()).isEqualTo("서울특별시");
+    assertThat(card.sigunguName()).isEqualTo("종로구");
   }
 }

@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -146,5 +147,23 @@ class CourseQueryServiceTest {
 
     // when & then
     assertThrows(CourseNotFoundException.class, () -> service.getCourse(1));
+  }
+
+  @Test
+  @DisplayName("회원의 코스 목록 조회를 CourseRepository에 정상적으로 위임한다")
+  void delegatesFindMyCoursesToRepository() {
+    // given
+    CourseQueryService service = new CourseQueryService(courseRepository);
+    PageRequest pageRequest = PageRequest.of(0, 20);
+    Page<Course> expectedPage = new PageImpl<>(List.of(course), pageRequest, 1);
+    when(courseRepository.findByMemberIdAndStatus("member-1", CourseStatus.ACTIVE, pageRequest))
+        .thenReturn(expectedPage);
+
+    // when
+    Page<Course> result = service.findMyCourses("member-1", CourseStatus.ACTIVE, pageRequest);
+
+    // then
+    assertThat(result).isEqualTo(expectedPage);
+    verify(courseRepository).findByMemberIdAndStatus("member-1", CourseStatus.ACTIVE, pageRequest);
   }
 }

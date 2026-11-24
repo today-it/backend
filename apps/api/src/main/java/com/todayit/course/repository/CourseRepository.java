@@ -88,6 +88,30 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
   Page<Course> findPublicActiveByPlaceId(@Param("placeId") int placeId, Pageable pageable);
 
   /**
+   * 회원이 작성한 삭제되지 않은 코스를 상태 조건 및 페이징에 맞게 조회합니다.
+   *
+   * @param memberId 회원 식별자
+   * @param status 코스 상태 필터, null이면 DELETED 제외 전체 조회
+   * @param pageable 페이징 및 정렬 조건
+   * @return 코스 페이지
+   */
+  @Query(
+      value =
+          "select course from Course course "
+              + "where course.memberId = :memberId "
+              + "and (:status is null and course.status <> com.todayit.course.entity.CourseStatus.DELETED "
+              + "     or course.status = :status) "
+              + "and course.deletedAt is null",
+      countQuery =
+          "select count(course) from Course course "
+              + "where course.memberId = :memberId "
+              + "and (:status is null and course.status <> com.todayit.course.entity.CourseStatus.DELETED "
+              + "     or course.status = :status) "
+              + "and course.deletedAt is null")
+  Page<Course> findByMemberIdAndStatus(
+      @Param("memberId") String memberId, @Param("status") CourseStatus status, Pageable pageable);
+
+  /**
    * 코스의 공개 범위를 변경합니다.
    *
    * @param courseId 코스 식별자

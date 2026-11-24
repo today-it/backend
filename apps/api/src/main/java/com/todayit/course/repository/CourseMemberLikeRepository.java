@@ -1,6 +1,7 @@
 package com.todayit.course.repository;
 
 import com.todayit.course.entity.CourseMemberLike;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -44,4 +45,16 @@ public interface CourseMemberLikeRepository extends JpaRepository<CourseMemberLi
       "select count(memberLike) from CourseMemberLike memberLike "
           + "where memberLike.course.courseId = :courseId")
   long countByCourseId(@Param("courseId") int courseId);
+
+  /**
+   * 여러 코스의 좋아요 수를 한 번에 조회합니다.
+   *
+   * @param courseIds 코스 식별자 목록
+   * @return [courseId, count] 목록
+   */
+  @Query(
+      "select memberLike.course.courseId, count(memberLike) from CourseMemberLike memberLike "
+          + "where memberLike.course.courseId in :courseIds "
+          + "group by memberLike.course.courseId")
+  List<Object[]> countByCourseIds(@Param("courseIds") List<Integer> courseIds);
 }
