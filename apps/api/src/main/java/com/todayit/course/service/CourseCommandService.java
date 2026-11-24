@@ -521,7 +521,7 @@ public class CourseCommandService {
     LocalDateTime startAt = command.startAt() != null ? command.startAt() : course.getStartAt();
     LocalDateTime endAt = command.endAt() != null ? command.endAt() : course.getEndAt();
 
-    if (command.durationMinutes() != null && command.endAt() == null) {
+    if (command.durationMinutes() != null) {
       if (startAt != null) {
         endAt = startAt.plusMinutes(command.durationMinutes());
       }

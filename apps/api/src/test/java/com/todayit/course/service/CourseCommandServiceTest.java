@@ -42,6 +42,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -1060,6 +1062,42 @@ class CourseCommandServiceTest {
             eq(initialStart),
             eq(initialStart.plusMinutes(120)),
             eq(CourseTransport.WALKING),
+            any(LocalDateTime.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  @DisplayName("종료 시각과 소요 시간을 함께 보내면 유효한 시작 시각에 소요 시간을 더해 저장한다")
+  void prioritizesDurationOverExplicitEndAt(boolean providesStartAt) {
+    // given
+    LocalDateTime initialStart = LocalDateTime.of(2026, 12, 1, 9, 0);
+    LocalDateTime requestedStart = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime explicitEnd = LocalDateTime.of(2026, 12, 1, 14, 0);
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            initialStart,
+            explicitEnd,
+            List.of(),
+            initialStart);
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(
+            1, null, providesStartAt ? requestedStart : null, explicitEnd, 60, null);
+
+    // when
+    service.updateCourseConditions("owner-member", command);
+
+    // then
+    LocalDateTime effectiveStart = providesStartAt ? requestedStart : initialStart;
+    verify(courses)
+        .updateConditions(
+            eq(1),
+            eq(effectiveStart),
+            eq(effectiveStart.plusMinutes(60)),
+            eq(CourseTransport.CAR),
             any(LocalDateTime.class));
   }
 
