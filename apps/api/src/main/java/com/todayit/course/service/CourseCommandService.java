@@ -3,20 +3,25 @@ package com.todayit.course.service;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
+import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CannotChangeDraftVisibilityException;
+import com.todayit.course.exception.CannotEditActiveCourseException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
+import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
@@ -40,17 +45,22 @@ public class CourseCommandService {
 
   private final CourseRepository courseRepository;
   private final CourseMemberLikeRepository courseMemberLikeRepository;
+  private final RegionQueryService regionQueryService;
 
   /**
-   * 코스 저장소를 받습니다.
+   * 코스 저장소와 지역 조회 서비스를 받습니다.
    *
    * @param courseRepository 코스 저장소
    * @param courseMemberLikeRepository 코스 회원 좋아요 저장소
+   * @param regionQueryService 행정 지역 조회 서비스
    */
   public CourseCommandService(
-      CourseRepository courseRepository, CourseMemberLikeRepository courseMemberLikeRepository) {
+      CourseRepository courseRepository,
+      CourseMemberLikeRepository courseMemberLikeRepository,
+      RegionQueryService regionQueryService) {
     this.courseRepository = courseRepository;
     this.courseMemberLikeRepository = courseMemberLikeRepository;
+    this.regionQueryService = regionQueryService;
   }
 
   /**
@@ -428,11 +438,14 @@ public class CourseCommandService {
             .filter(c -> c.getDeletedAt() == null && c.getStatus() != CourseStatus.DELETED)
             .orElseThrow(CourseNotFoundException::new);
 
-    LocalDateTime now = LocalDateTime.now();
-    course.changeVisibility(visibility, now);
+    if (course.getStatus() == CourseStatus.DRAFT) {
+      throw new CannotChangeDraftVisibilityException();
+    }
 
-    return new UpdateCourseVisibilityResult(
-        course.getCourseId(), course.getVisibility(), course.getUpdatedAt());
+    LocalDateTime now = LocalDateTime.now();
+    courseRepository.updateVisibility(courseId, visibility, now);
+
+    return new UpdateCourseVisibilityResult(course.getCourseId(), visibility, now);
   }
 
   private void validateCourseForLike(Course course, String memberId) {
@@ -443,5 +456,72 @@ public class CourseCommandService {
         && !course.getMemberId().equals(memberId)) {
       throw new CourseNotFoundException();
     }
+  }
+
+  /**
+   * 임시저장(DRAFT) 코스의 생성 조건을 수정합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param command 코스 생성 조건 수정 명령
+   * @return 수정된 코스 엔티티
+   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @throws CannotEditActiveCourseException 코스가 DRAFT 상태가 아닌 경우
+   * @throws CourseException 지역 코드 또는 일정 조건이 유효하지 않은 경우
+   */
+  @Transactional
+  public Course updateCourseConditions(String memberId, UpdateCourseConditionsCommand command) {
+    Course course =
+        courseRepository
+            .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
+            .filter(c -> c.getDeletedAt() == null && c.getStatus() != CourseStatus.DELETED)
+            .orElseThrow(CourseNotFoundException::new);
+
+    if (course.getStatus() != CourseStatus.DRAFT) {
+      throw new CannotEditActiveCourseException();
+    }
+
+    if (command.region() != null && !command.region().isBlank()) {
+      String regionCode = command.region().strip();
+      List<Integer> regionIds;
+      try {
+        if (regionCode.length() == 2) {
+          regionIds = regionQueryService.findRegionIds(regionCode, null);
+        } else if (regionCode.length() == 3) {
+          regionIds = regionQueryService.findRegionIds(null, regionCode);
+        } else {
+          throw new CourseException(CourseErrorCode.INVALID_REGION);
+        }
+      } catch (InvalidRegionPathException e) {
+        throw new CourseException(CourseErrorCode.INVALID_REGION);
+      }
+      course.getRegions().clear();
+      for (Integer regionId : regionIds) {
+        course.getRegions().add(RegionCourse.create(course, regionId));
+      }
+      courseRepository.saveAndFlush(course);
+    }
+
+    LocalDateTime startAt = command.startAt() != null ? command.startAt() : course.getStartAt();
+    LocalDateTime endAt = command.endAt() != null ? command.endAt() : course.getEndAt();
+
+    if (command.durationMinutes() != null && command.endAt() == null) {
+      if (startAt != null) {
+        endAt = startAt.plusMinutes(command.durationMinutes());
+      }
+    }
+
+    if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
+      throw new CourseException(CourseErrorCode.INVALID_END_AT);
+    }
+
+    CourseTransport transport =
+        command.transport() != null ? command.transport() : course.getTransport();
+    LocalDateTime now = LocalDateTime.now();
+
+    courseRepository.updateConditions(command.courseId(), startAt, endAt, transport, now);
+
+    return courseRepository
+        .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
+        .orElseThrow(CourseNotFoundException::new);
   }
 }

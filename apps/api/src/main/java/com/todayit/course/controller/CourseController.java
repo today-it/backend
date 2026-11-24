@@ -4,6 +4,7 @@ import com.todayit.common.response.CommonResponse;
 import com.todayit.course.controller.docs.CourseApiDocs;
 import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
+import com.todayit.course.dto.request.UpdateCourseConditionsRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
 import com.todayit.course.dto.request.UpdateCourseVisibilityRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
@@ -12,12 +13,14 @@ import com.todayit.course.dto.response.CourseDetailResponse;
 import com.todayit.course.dto.response.CourseLikeResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.dto.response.RemoveCoursePlaceResponse;
+import com.todayit.course.dto.response.UpdateCourseConditionsResponse;
 import com.todayit.course.dto.response.UpdateCoursePlaceOrdersResponse;
 import com.todayit.course.dto.response.UpdateCourseVisibilityResponse;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import org.springframework.http.HttpStatus;
@@ -221,5 +224,25 @@ public class CourseController implements CourseApiDocs {
         courseFacade.updateCourseVisibility(
             authentication.getName(), courseId, request.visibility());
     return ResponseEntity.ok(CommonResponse.success(UpdateCourseVisibilityResponse.from(result)));
+  }
+
+  /**
+   * 임시저장(DRAFT) 코스의 생성 조건을 수정합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 생성 조건 수정 요청 본문
+   * @param authentication 인증된 작성자 정보
+   * @return 수정된 생성 조건 및 장소 목록
+   */
+  @Override
+  @PatchMapping("/{courseId}/conditions")
+  public ResponseEntity<CommonResponse<UpdateCourseConditionsResponse>> updateCourseConditions(
+      @PathVariable int courseId,
+      @RequestBody UpdateCourseConditionsRequest request,
+      Authentication authentication) {
+    request.validate();
+    UpdateCourseConditionsResult result =
+        courseFacade.updateCourseConditions(authentication.getName(), request.toCommand(courseId));
+    return ResponseEntity.ok(CommonResponse.success(UpdateCourseConditionsResponse.from(result)));
   }
 }

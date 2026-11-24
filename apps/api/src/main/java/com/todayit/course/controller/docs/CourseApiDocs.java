@@ -5,6 +5,7 @@ import com.todayit.common.response.CommonResponse;
 import com.todayit.common.response.ErrorResponse;
 import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
+import com.todayit.course.dto.request.UpdateCourseConditionsRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
 import com.todayit.course.dto.request.UpdateCourseVisibilityRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
@@ -13,6 +14,7 @@ import com.todayit.course.dto.response.CourseDetailResponse;
 import com.todayit.course.dto.response.CourseLikeResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.dto.response.RemoveCoursePlaceResponse;
+import com.todayit.course.dto.response.UpdateCourseConditionsResponse;
 import com.todayit.course.dto.response.UpdateCoursePlaceOrdersResponse;
 import com.todayit.course.dto.response.UpdateCourseVisibilityResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -954,5 +956,120 @@ public interface CourseApiDocs {
   ResponseEntity<CommonResponse<UpdateCourseVisibilityResponse>> updateCourseVisibility(
       @Parameter(description = "코스 식별자입니다.", example = "1", required = true) int courseId,
       UpdateCourseVisibilityRequest request,
+      @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 임시저장(DRAFT) 코스의 생성 조건을 수정합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 생성 조건 수정 요청 본문
+   * @param authentication 인증된 회원 정보
+   * @return 수정된 코스 생성 조건 및 장소 목록
+   */
+  @Operation(
+      summary = "코스 생성 조건 수정",
+      description = "임시저장(DRAFT) 코스의 생성 조건(행정 지역, 방문 시간, 소요 시간, 이동수단)을 수정합니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "코스 생성 조건 수정 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UpdateCourseConditionsResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": {
+                        "courseId": 1,
+                        "conditions": {
+                          "region": {
+                            "sidoCode": "11",
+                            "sidoName": "서울특별시",
+                            "sigunguCode": "110",
+                            "sigunguName": "종로구"
+                          },
+                          "startAt": "2026-12-01T10:00:00",
+                          "endAt": "2026-12-01T14:00:00",
+                          "durationMinutes": 240,
+                          "transport": "CAR"
+                        },
+                        "places": [],
+                        "updatedAt": "2026-11-24T18:30:00"
+                      }
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "요청 유효성 검증 실패 또는 수정 불가 상태",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "지역 코드 형식 오류",
+                      value =
+                          """
+                      {"success":false,"code":"INVALID_COURSE_REGION","message":"시도 코드는 2자리, 시군구 코드는 3자리이어야 합니다."}
+                      """),
+                  @ExampleObject(
+                      name = "종료 시각 순서 오류",
+                      value =
+                          """
+                      {"success":false,"code":"INVALID_COURSE_END_AT","message":"종료 시각은 시작 시각 이후이어야 합니다."}
+                      """),
+                  @ExampleObject(
+                      name = "확정 코스 수정 불가",
+                      value =
+                          """
+                      {"success":false,"code":"CANNOT_EDIT_ACTIVE_COURSE","message":"확정된 코스는 생성 조건을 수정할 수 없습니다."}
+                      """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 실패",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {"success":false,"code":"UNAUTHORIZED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스가 없거나 삭제되었거나 작성자가 아닌 경우",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<UpdateCourseConditionsResponse>> updateCourseConditions(
+      @Parameter(description = "코스 식별자입니다.", example = "1", required = true) int courseId,
+      UpdateCourseConditionsRequest request,
       @Parameter(hidden = true) Authentication authentication);
 }

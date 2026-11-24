@@ -2,6 +2,7 @@ package com.todayit.course.repository;
 
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
 import jakarta.persistence.LockModeType;
@@ -167,4 +168,31 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
       where c.courseId = :courseId
       """)
   int increaseViewCount(@Param("courseId") int courseId);
+
+  /**
+   * 임시저장 코스의 생성 조건을 수정합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param startAt 방문 시작 일시
+   * @param endAt 방문 종료 일시
+   * @param transport 이동수단
+   * @param updatedAt 수정 시각
+   * @return 변경된 행 수
+   */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      """
+      update Course c
+      set c.startAt = :startAt,
+          c.endAt = :endAt,
+          c.transport = :transport,
+          c.updatedAt = :updatedAt
+      where c.courseId = :courseId
+      """)
+  int updateConditions(
+      @Param("courseId") int courseId,
+      @Param("startAt") LocalDateTime startAt,
+      @Param("endAt") LocalDateTime endAt,
+      @Param("transport") CourseTransport transport,
+      @Param("updatedAt") LocalDateTime updatedAt);
 }

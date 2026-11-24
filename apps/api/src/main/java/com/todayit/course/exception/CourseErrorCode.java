@@ -54,6 +54,9 @@ public enum CourseErrorCode implements ErrorCode {
   /** 임시저장(DRAFT) 상태의 코스는 공개 범위를 변경할 수 없는 경우입니다. */
   CANNOT_CHANGE_DRAFT_VISIBILITY("CANNOT_CHANGE_DRAFT_VISIBILITY", "임시저장 코스는 공개 범위를 변경할 수 없습니다."),
 
+  /** 확정(ACTIVE) 상태의 코스는 생성 조건을 수정할 수 없는 경우입니다. */
+  CANNOT_EDIT_ACTIVE_COURSE("CANNOT_EDIT_ACTIVE_COURSE", "확정된 코스는 생성 조건을 수정할 수 없습니다."),
+
   /** 이미 좋아요를 누른 코스에 다시 좋아요를 요청한 경우입니다. */
   ALREADY_LIKED("COURSE_ALREADY_LIKED", "이미 좋아요를 눌렀습니다.", ErrorStatus.CONFLICT);
 

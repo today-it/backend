@@ -1,22 +1,22 @@
 package com.todayit.course.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.todayit.course.exception.CannotChangeDraftVisibilityException;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("코스 엔티티 단위 테스트")
 class CourseTest {
 
   @Test
-  @DisplayName("확정된 코스의 공개 범위를 변경하면 공개 범위와 수정 일시가 갱신된다")
-  void changesVisibilitySuccessfullyForActiveCourse() {
+  @DisplayName("입력 조건으로 비공개 임시저장 코스를 정상 생성한다")
+  void createsDraftSuccessfully() {
     // given
+    LocalDateTime now = LocalDateTime.of(2026, 11, 24, 10, 0);
+
+    // when
     Course course =
         Course.createDraft(
             "member-1",
@@ -25,40 +25,39 @@ class CourseTest {
             LocalDateTime.of(2026, 11, 24, 10, 0),
             LocalDateTime.of(2026, 11, 24, 18, 0),
             List.of(),
-            LocalDateTime.of(2026, 11, 24, 9, 0));
-    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
-    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
-
-    LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 24, 12, 0);
-
-    // when
-    course.changeVisibility(CourseVisibility.PRIVATE, updatedAt);
+            now);
 
     // then
+    assertThat(course.getMemberId()).isEqualTo("member-1");
+    assertThat(course.getTitle()).isEqualTo("내 코스");
+    assertThat(course.getStatus()).isEqualTo(CourseStatus.DRAFT);
     assertThat(course.getVisibility()).isEqualTo(CourseVisibility.PRIVATE);
-    assertThat(course.getUpdatedAt()).isEqualTo(updatedAt);
+    assertThat(course.getCreatedAt()).isEqualTo(now);
   }
 
   @Test
-  @DisplayName("임시저장 상태의 코스는 공개 범위를 변경할 수 없다")
-  void rejectsChangingVisibilityForDraftCourse() {
+  @DisplayName("원본 코스로부터 새로운 임시 코스를 복사 생성한다")
+  void createsCopyDraftSuccessfully() {
     // given
-    Course course =
+    Course source =
         Course.createDraft(
-            "member-1",
-            "임시 코스",
+            "owner-member",
+            "원본 코스",
             CourseTransport.CAR,
             LocalDateTime.of(2026, 11, 24, 10, 0),
             LocalDateTime.of(2026, 11, 24, 18, 0),
             List.of(),
             LocalDateTime.of(2026, 11, 24, 9, 0));
-    ReflectionTestUtils.setField(course, "status", CourseStatus.DRAFT);
+    LocalDateTime now = LocalDateTime.of(2026, 11, 24, 12, 0);
 
-    LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 24, 12, 0);
+    // when
+    Course copied = Course.createCopyDraft("new-member", source, now);
 
-    // when & then
-    assertThrows(
-        CannotChangeDraftVisibilityException.class,
-        () -> course.changeVisibility(CourseVisibility.PUBLIC, updatedAt));
+    // then
+    assertThat(copied.getMemberId()).isEqualTo("new-member");
+    assertThat(copied.getTitle()).isNull();
+    assertThat(copied.getStatus()).isEqualTo(CourseStatus.DRAFT);
+    assertThat(copied.getVisibility()).isEqualTo(CourseVisibility.PRIVATE);
+    assertThat(copied.getCreatedAt()).isEqualTo(now);
   }
 }

@@ -21,6 +21,7 @@ import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseScrapRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.AddCoursePlaceResult;
@@ -33,6 +34,7 @@ import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.MyCourseCardResult;
 import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
@@ -437,5 +439,48 @@ class CourseFacadeTest {
     // then
     assertThat(result).isEqualTo(expected);
     verify(courses).updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
+  }
+
+  @Test
+  @DisplayName("코스 생성 조건 수정을 수행하고 요약 지역 정보와 장소 목록을 조립하여 반환한다")
+  void updatesCourseConditionsSuccessfully() {
+    // given
+    LocalDateTime startAt = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime endAt = LocalDateTime.of(2026, 12, 1, 14, 0);
+    LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 24, 18, 0);
+
+    Course course =
+        Course.createDraft(
+            "member-1",
+            "임시 코스",
+            CourseTransport.CAR,
+            startAt,
+            endAt,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "updatedAt", updatedAt);
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, "11", startAt, endAt, 240, CourseTransport.CAR);
+
+    when(courses.updateCourseConditions("member-1", command)).thenReturn(course);
+    when(regions.getCourseRegionSummary(any()))
+        .thenReturn(new CourseRegionResult("11", "서울특별시", "110", "종로구"));
+
+    // when
+    UpdateCourseConditionsResult result = facade.updateCourseConditions("member-1", command);
+
+    // then
+    assertThat(result.courseId()).isEqualTo(1);
+    assertThat(result.conditions().region().sidoCode()).isEqualTo("11");
+    assertThat(result.conditions().region().sidoName()).isEqualTo("서울특별시");
+    assertThat(result.conditions().region().sigunguCode()).isEqualTo("110");
+    assertThat(result.conditions().region().sigunguName()).isEqualTo("종로구");
+    assertThat(result.conditions().startAt()).isEqualTo(startAt);
+    assertThat(result.conditions().endAt()).isEqualTo(endAt);
+    assertThat(result.conditions().durationMinutes()).isEqualTo(240);
+    assertThat(result.conditions().transport()).isEqualTo(CourseTransport.CAR);
+    assertThat(result.updatedAt()).isEqualTo(updatedAt);
   }
 }

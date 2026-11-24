@@ -13,10 +13,12 @@ import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseScrapRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
+import com.todayit.course.service.model.CourseConditionsResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
@@ -26,9 +28,11 @@ import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.MyCourseCardResult;
 import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -273,6 +277,40 @@ public class CourseFacade implements MemberCourseQueryService {
   public UpdateCourseVisibilityResult updateCourseVisibility(
       String memberId, int courseId, CourseVisibility visibility) {
     return courseCommandService.updateCourseVisibility(memberId, courseId, visibility);
+  }
+
+  /**
+   * 임시저장 코스의 생성 조건을 수정하고 갱신된 조건과 장소 목록을 반환합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param command 코스 생성 조건 수정 명령
+   * @return 생성 조건 수정 결과
+   */
+  @Transactional
+  public UpdateCourseConditionsResult updateCourseConditions(
+      String memberId, UpdateCourseConditionsCommand command) {
+    Course course = courseCommandService.updateCourseConditions(memberId, command);
+
+    List<Integer> regionIds = course.getRegions().stream().map(RegionCourse::getRegionId).toList();
+    CourseRegionResult regionResult = regionQueryService.getCourseRegionSummary(regionIds);
+
+    Integer durationMinutes = null;
+    if (course.getStartAt() != null && course.getEndAt() != null) {
+      durationMinutes = (int) Duration.between(course.getStartAt(), course.getEndAt()).toMinutes();
+    }
+
+    CourseConditionsResult conditionsResult =
+        new CourseConditionsResult(
+            regionResult,
+            course.getStartAt(),
+            course.getEndAt(),
+            durationMinutes,
+            course.getTransport());
+
+    List<CoursePlaceDetailResult> places = toCoursePlaceDetailResults(course.getCoursePlaces());
+
+    return new UpdateCourseConditionsResult(
+        course.getCourseId(), conditionsResult, places, course.getUpdatedAt());
   }
 
   private List<CoursePlaceDetailResult> toCoursePlaceDetailResults(

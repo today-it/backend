@@ -18,6 +18,7 @@ import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.exception.CannotChangeDraftVisibilityException;
+import com.todayit.course.exception.CannotEditActiveCourseException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
@@ -29,14 +30,18 @@ import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
+import com.todayit.course.service.model.CourseConditionsResult;
 import com.todayit.course.service.model.CourseDetailResult;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
+import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
+import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
@@ -1341,5 +1346,179 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
     verify(courseFacade).updateCourseVisibility("member-1", 999, CourseVisibility.PUBLIC);
+  }
+
+  @Test
+  @DisplayName("코스 생성 조건을 정상적으로 수정하면 200 OK와 수정된 조건 및 장소 목록을 반환한다")
+  void updatesCourseConditionsSuccessfully() throws Exception {
+    // given
+    LocalDateTime startAt = LocalDateTime.of(2026, 12, 1, 10, 0);
+    LocalDateTime endAt = LocalDateTime.of(2026, 12, 1, 14, 0);
+    LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 24, 18, 0);
+
+    CourseConditionsResult conditionsResult =
+        new CourseConditionsResult(
+            new CourseRegionResult("11", "서울특별시", "110", "종로구"),
+            startAt,
+            endAt,
+            240,
+            CourseTransport.CAR);
+
+    UpdateCourseConditionsResult expectedResult =
+        new UpdateCourseConditionsResult(1, conditionsResult, List.of(), updatedAt);
+
+    when(courseFacade.updateCourseConditions(
+            eq("member-1"), any(UpdateCourseConditionsCommand.class)))
+        .thenReturn(expectedResult);
+
+    String request =
+        """
+        {
+          "region": "11",
+          "startAt": "2026-12-01T10:00:00",
+          "endAt": "2026-12-01T14:00:00",
+          "durationMinutes": 240,
+          "transport": "CAR"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.conditions.region.sidoCode").value("11"))
+        .andExpect(jsonPath("$.data.conditions.region.sidoName").value("서울특별시"))
+        .andExpect(jsonPath("$.data.conditions.region.sigunguCode").value("110"))
+        .andExpect(jsonPath("$.data.conditions.region.sigunguName").value("종로구"))
+        .andExpect(jsonPath("$.data.conditions.startAt").value("2026-12-01T10:00:00"))
+        .andExpect(jsonPath("$.data.conditions.endAt").value("2026-12-01T14:00:00"))
+        .andExpect(jsonPath("$.data.conditions.durationMinutes").value(240))
+        .andExpect(jsonPath("$.data.conditions.transport").value("CAR"))
+        .andExpect(jsonPath("$.data.places").isArray())
+        .andExpect(jsonPath("$.data.updatedAt").value("2026-11-24T18:00:00"));
+  }
+
+  @Test
+  @DisplayName("지역 코드 형식이 올바르지 않으면 400 Bad Request를 반환한다")
+  void rejectsUpdatingConditionsWhenRegionIsInvalid() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "region": "1111"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_REGION"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("종료 시각이 시작 시각 이전이면 400 Bad Request를 반환한다")
+  void rejectsUpdatingConditionsWhenEndAtBeforeStartAt() throws Exception {
+    // given
+    String request =
+        """
+        {
+          "startAt": "2026-12-01T14:00:00",
+          "endAt": "2026-12-01T10:00:00"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_COURSE_END_AT"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("확정(ACTIVE) 상태의 코스 생성 조건을 수정하려고 하면 400 Bad Request를 반환한다")
+  void rejectsUpdatingConditionsWhenActiveCourse() throws Exception {
+    // given
+    doThrow(new CannotEditActiveCourseException())
+        .when(courseFacade)
+        .updateCourseConditions(eq("member-1"), any(UpdateCourseConditionsCommand.class));
+
+    String request =
+        """
+        {
+          "transport": "CAR"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("CANNOT_EDIT_ACTIVE_COURSE"));
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 조건 수정 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnUpdateConditions() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException())
+        .when(courseFacade)
+        .updateCourseConditions(eq("member-1"), any(UpdateCourseConditionsCommand.class));
+
+    String request =
+        """
+        {
+          "transport": "CAR"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/999/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
   }
 }

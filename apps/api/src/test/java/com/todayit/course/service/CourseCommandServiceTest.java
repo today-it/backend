@@ -3,6 +3,7 @@ package com.todayit.course.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,17 +16,20 @@ import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
 import com.todayit.course.exception.CannotChangeDraftVisibilityException;
+import com.todayit.course.exception.CannotEditActiveCourseException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
+import com.todayit.course.exception.InvalidRegionPathException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
+import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
@@ -48,6 +52,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class CourseCommandServiceTest {
   @Mock private CourseRepository courses;
   @Mock private CourseMemberLikeRepository courseMemberLikeRepository;
+  @Mock private RegionQueryService regionQueryService;
   @InjectMocks private CourseCommandService service;
 
   @Test
@@ -845,7 +850,7 @@ class CourseCommandServiceTest {
     assertThat(result.courseId()).isEqualTo(1);
     assertThat(result.visibility()).isEqualTo(CourseVisibility.PRIVATE);
     assertThat(result.updatedAt()).isNotNull();
-    assertThat(course.getVisibility()).isEqualTo(CourseVisibility.PRIVATE);
+    verify(courses).updateVisibility(eq(1), eq(CourseVisibility.PRIVATE), any(LocalDateTime.class));
   }
 
   @Test
@@ -883,5 +888,176 @@ class CourseCommandServiceTest {
     assertThrows(
         CannotChangeDraftVisibilityException.class,
         () -> service.updateCourseVisibility("owner-member", 1, CourseVisibility.PRIVATE));
+  }
+
+  @Test
+  @DisplayName("코스가 존재하지 않거나 타인의 코스 또는 삭제된 코스이면 조건 수정 시 404 예외를 던진다")
+  void rejectsUpdatingConditionsWhenCourseNotFoundOrDeleted() {
+    // given
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(999, null, null, null, null, null);
+    when(courses.findByIdAndMemberIdForUpdate(999, "owner-member")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(
+        CourseNotFoundException.class,
+        () -> service.updateCourseConditions("owner-member", command));
+  }
+
+  @Test
+  @DisplayName("확정(ACTIVE) 상태의 코스는 생성 조건을 수정할 수 없다")
+  void rejectsUpdatingConditionsForActiveCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "확정 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, null, null, null, null, CourseTransport.WALKING);
+
+    // when & then
+    assertThrows(
+        CannotEditActiveCourseException.class,
+        () -> service.updateCourseConditions("owner-member", command));
+  }
+
+  @Test
+  @DisplayName("유효하지 않은 지역 코드이거나 존재하지 않는 지역인 경우 예외를 던진다")
+  void rejectsUpdatingConditionsWhenInvalidRegionCode() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+    when(regionQueryService.findRegionIds("99", null)).thenThrow(new InvalidRegionPathException());
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, "99", null, null, null, null);
+
+    // when & then
+    CourseException exception =
+        assertThrows(
+            CourseException.class, () -> service.updateCourseConditions("owner-member", command));
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.INVALID_REGION);
+  }
+
+  @Test
+  @DisplayName("durationMinutes가 제공되고 endAt이 없는 경우 endAt이 자동 계산되어 리포지토리를 통해 갱신된다")
+  void updatesConditionsSuccessfullyWithDurationMinutes() {
+    // given
+    LocalDateTime initialStart = LocalDateTime.of(2026, 12, 1, 10, 0);
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            initialStart,
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+
+    Course updatedCourse =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.WALKING,
+            initialStart,
+            initialStart.plusMinutes(120),
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(updatedCourse, "courseId", 1);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member"))
+        .thenReturn(Optional.of(course), Optional.of(updatedCourse));
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, null, null, null, 120, CourseTransport.WALKING);
+
+    // when
+    Course updated = service.updateCourseConditions("owner-member", command);
+
+    // then
+    assertThat(updated.getStartAt()).isEqualTo(initialStart);
+    assertThat(updated.getEndAt()).isEqualTo(initialStart.plusMinutes(120));
+    assertThat(updated.getTransport()).isEqualTo(CourseTransport.WALKING);
+    verify(courses)
+        .updateConditions(
+            eq(1),
+            eq(initialStart),
+            eq(initialStart.plusMinutes(120)),
+            eq(CourseTransport.WALKING),
+            any(LocalDateTime.class));
+  }
+
+  @Test
+  @DisplayName("지역 코드(시도)와 일시, 이동수단을 지정하여 정상적으로 조건을 수정한다")
+  void updatesConditionsSuccessfullyWithExplicitEndAtAndRegion() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+
+    LocalDateTime newStartAt = LocalDateTime.of(2026, 12, 2, 9, 0);
+    LocalDateTime newEndAt = LocalDateTime.of(2026, 12, 2, 18, 0);
+
+    Course updatedCourse =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.PUBLIC_TRANSPORT,
+            newStartAt,
+            newEndAt,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(updatedCourse, "courseId", 1);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member"))
+        .thenReturn(Optional.of(course), Optional.of(updatedCourse));
+    when(regionQueryService.findRegionIds("11", null)).thenReturn(List.of(10, 11));
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(
+            1, "11", newStartAt, newEndAt, null, CourseTransport.PUBLIC_TRANSPORT);
+
+    // when
+    Course updated = service.updateCourseConditions("owner-member", command);
+
+    // then
+    assertThat(updated.getStartAt()).isEqualTo(newStartAt);
+    assertThat(updated.getEndAt()).isEqualTo(newEndAt);
+    assertThat(updated.getTransport()).isEqualTo(CourseTransport.PUBLIC_TRANSPORT);
+    verify(courses)
+        .updateConditions(
+            eq(1),
+            eq(newStartAt),
+            eq(newEndAt),
+            eq(CourseTransport.PUBLIC_TRANSPORT),
+            any(LocalDateTime.class));
   }
 }
