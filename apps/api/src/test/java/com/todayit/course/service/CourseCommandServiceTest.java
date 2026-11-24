@@ -855,9 +855,10 @@ class CourseCommandServiceTest {
     assertThrows(CourseNotFoundException.class, () -> service.likeCourse(1, "liker-member"));
   }
 
-  @Test
+  @ParameterizedTest
+  @ValueSource(strings = {"some other data integrity violation", "fk_course_member_like_member"})
   @DisplayName("좋아요 등록 시 코스 외래키 외의 다른 무결성 위반은 예외를 그대로 전파한다")
-  void propagatesOtherDataIntegrityViolationsDuringLike() {
+  void propagatesOtherDataIntegrityViolationsDuringLike(String causeMessage) {
     // given
     Course course =
         Course.createDraft(
@@ -873,12 +874,18 @@ class CourseCommandServiceTest {
     ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
 
     when(courses.findById(1)).thenReturn(Optional.of(course));
-    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1))
-        .thenThrow(new DataIntegrityViolationException("some other data integrity violation"));
+    DataIntegrityViolationException failure =
+        new DataIntegrityViolationException(
+            "could not execute statement [insert into course_member_like (member_id, course_id)"
+                + " values (?, ?)]",
+            new RuntimeException(causeMessage));
+    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1)).thenThrow(failure);
 
     // when & then
-    assertThrows(
-        DataIntegrityViolationException.class, () -> service.likeCourse(1, "liker-member"));
+    DataIntegrityViolationException exception =
+        assertThrows(
+            DataIntegrityViolationException.class, () -> service.likeCourse(1, "liker-member"));
+    assertThat(exception).isSameAs(failure);
   }
 
   @Test

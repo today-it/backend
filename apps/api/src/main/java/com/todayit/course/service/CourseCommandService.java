@@ -578,8 +578,7 @@ public class CourseCommandService {
       String message = current.getMessage();
       if (message != null) {
         String lower = message.toLowerCase();
-        if (lower.contains("fk_course_member_like_course")
-            || (lower.contains("course_member_like") && lower.contains("course_id"))) {
+        if (lower.contains("fk_course_member_like_course")) {
           return true;
         }
       }
