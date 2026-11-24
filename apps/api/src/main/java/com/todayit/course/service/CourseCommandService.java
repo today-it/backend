@@ -490,6 +490,20 @@ public class CourseCommandService {
       throw new CannotEditActiveCourseException();
     }
 
+    LocalDateTime startAt = command.startAt() != null ? command.startAt() : course.getStartAt();
+    LocalDateTime endAt = command.endAt() != null ? command.endAt() : course.getEndAt();
+
+    if (command.durationMinutes() != null) {
+      if (startAt == null) {
+        throw new CourseException(CourseErrorCode.START_AT_REQUIRED);
+      }
+      endAt = startAt.plusMinutes(command.durationMinutes());
+    }
+
+    if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
+      throw new CourseException(CourseErrorCode.INVALID_END_AT);
+    }
+
     if (command.region() != null && !command.region().isBlank()) {
       String regionCode = command.region().strip();
       List<Integer> regionIds;
@@ -516,19 +530,6 @@ public class CourseCommandService {
         course.getRegions().add(RegionCourse.create(course, regionId));
       }
       courseRepository.saveAndFlush(course);
-    }
-
-    LocalDateTime startAt = command.startAt() != null ? command.startAt() : course.getStartAt();
-    LocalDateTime endAt = command.endAt() != null ? command.endAt() : course.getEndAt();
-
-    if (command.durationMinutes() != null) {
-      if (startAt != null) {
-        endAt = startAt.plusMinutes(command.durationMinutes());
-      }
-    }
-
-    if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
-      throw new CourseException(CourseErrorCode.INVALID_END_AT);
     }
 
     CourseTransport transport =

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.todayit.course.entity.Course;
@@ -1063,6 +1064,34 @@ class CourseCommandServiceTest {
             eq(initialStart.plusMinutes(120)),
             eq(CourseTransport.WALKING),
             any(LocalDateTime.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  @DisplayName("시작 시각 없이 소요 시간을 요청하면 지역과 일정을 저장하기 전에 거부한다")
+  void rejectsDurationWithoutStartAtBeforeSaving(boolean providesRegion) {
+    // given
+    LocalDateTime now = LocalDateTime.of(2026, 12, 1, 9, 0);
+    Course source =
+        Course.createDraft(
+            "owner-member", "원본 코스", CourseTransport.CAR, now, now.plusHours(4), List.of(), now);
+    Course course = Course.createCopyDraft("owner-member", source, now);
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, providesRegion ? "11" : null, null, null, 120, null);
+
+    // when
+    CourseException exception =
+        assertThrows(
+            CourseException.class, () -> service.updateCourseConditions("owner-member", command));
+
+    // then
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.START_AT_REQUIRED);
+    verifyNoInteractions(regionQueryService);
+    verify(courses, never()).saveAndFlush(any());
+    verify(courses, never()).updateConditions(eq(1), any(), any(), any(), any());
+    assertThat(course.getStartAt()).isNull();
+    assertThat(course.getEndAt()).isNull();
   }
 
   @ParameterizedTest
