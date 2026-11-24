@@ -17,6 +17,7 @@ import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
+import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
@@ -31,6 +32,7 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
+import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
@@ -1152,5 +1154,68 @@ class CourseControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("CANNOT_COPY_DRAFT"));
+  }
+
+  @Test
+  @DisplayName("코스 좋아요 등록 요청이 유효하면 201과 좋아요 결과를 반환한다")
+  void likesCourseSuccessfully() throws Exception {
+    // given
+    CourseLikeResult likeResult = new CourseLikeResult(1, true, 5L);
+    when(courseFacade.likeCourse(1, "member-1")).thenReturn(likeResult);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/like")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.liked").value(true))
+        .andExpect(jsonPath("$.data.likeCount").value(5));
+    verify(courseFacade).likeCourse(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("이미 좋아요를 누른 코스에 좋아요 요청 시 409 Conflict를 반환한다")
+  void returnsConflictWhenCourseAlreadyLiked() throws Exception {
+    // given
+    doThrow(new CourseAlreadyLikedException()).when(courseFacade).likeCourse(1, "member-1");
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/like")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_ALREADY_LIKED"));
+    verify(courseFacade).likeCourse(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 비활성·삭제된 코스에 좋아요 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnLikeCourse() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException()).when(courseFacade).likeCourse(999, "member-1");
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/999/like")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+    verify(courseFacade).likeCourse(999, "member-1");
   }
 }

@@ -5,17 +5,20 @@ import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
+import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
+import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
+import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -35,14 +38,18 @@ public class CourseCommandService {
   public static final int MAX_PLACE_DUPLICATION_COUNT = 2;
 
   private final CourseRepository courseRepository;
+  private final CourseMemberLikeRepository courseMemberLikeRepository;
 
   /**
    * 코스 저장소를 받습니다.
    *
    * @param courseRepository 코스 저장소
+   * @param courseMemberLikeRepository 코스 회원 좋아요 저장소
    */
-  public CourseCommandService(CourseRepository courseRepository) {
+  public CourseCommandService(
+      CourseRepository courseRepository, CourseMemberLikeRepository courseMemberLikeRepository) {
     this.courseRepository = courseRepository;
+    this.courseMemberLikeRepository = courseMemberLikeRepository;
   }
 
   /**
@@ -388,6 +395,39 @@ public class CourseCommandService {
   private void restoreShiftedOrdersForRemoval(List<CoursePlace> shiftedPlaces) {
     for (CoursePlace cp : shiftedPlaces) {
       cp.setOrder(-cp.getOrder() - 1);
+    }
+  }
+
+  /**
+   * 코스에 좋아요를 등록하고 최신 좋아요 수를 반환합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param memberId 회원 식별자
+   * @return 코스 좋아요 결과
+   * @throws CourseNotFoundException 코스가 존재하지 않거나, 삭제되었거나, 임시저장이거나, 타인의 비공개 코스인 경우
+   * @throws CourseAlreadyLikedException 이미 좋아요를 누른 경우
+   */
+  @Transactional
+  public CourseLikeResult likeCourse(int courseId, String memberId) {
+    Course course = courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
+    validateCourseForLike(course, memberId);
+
+    int insertedCount = courseMemberLikeRepository.insertIfAbsent(memberId, courseId);
+    if (insertedCount == 0) {
+      throw new CourseAlreadyLikedException();
+    }
+
+    long likeCount = courseMemberLikeRepository.countByCourseId(courseId);
+    return new CourseLikeResult(courseId, true, likeCount);
+  }
+
+  private void validateCourseForLike(Course course, String memberId) {
+    if (course.getDeletedAt() != null || course.getStatus() != CourseStatus.ACTIVE) {
+      throw new CourseNotFoundException();
+    }
+    if (course.getVisibility() == CourseVisibility.PRIVATE
+        && !course.getMemberId().equals(memberId)) {
+      throw new CourseNotFoundException();
     }
   }
 }

@@ -22,6 +22,7 @@ import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
+import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
 import com.todayit.course.service.model.CreateCourseResult;
@@ -336,5 +337,20 @@ class CourseFacadeTest {
     CoursePlace cp = CoursePlace.create(course, placeId, assignedOrder, stayMinute);
     course.getCoursePlaces().add(cp);
     return cp;
+  }
+
+  @Test
+  @DisplayName("코스 좋아요 등록을 CourseCommandService에 정상적으로 위임한다")
+  void likesCourseSuccessfully() {
+    // given
+    CourseLikeResult expected = new CourseLikeResult(1, true, 3L);
+    when(courses.likeCourse(1, "member-1")).thenReturn(expected);
+
+    // when
+    CourseLikeResult result = facade.likeCourse(1, "member-1");
+
+    // then
+    assertThat(result).isEqualTo(expected);
+    verify(courses).likeCourse(1, "member-1");
   }
 }

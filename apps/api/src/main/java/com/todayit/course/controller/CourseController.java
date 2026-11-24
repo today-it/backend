@@ -8,6 +8,7 @@ import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
 import com.todayit.course.dto.response.CopyCourseResponse;
 import com.todayit.course.dto.response.CourseDetailResponse;
+import com.todayit.course.dto.response.CourseLikeResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.dto.response.RemoveCoursePlaceResponse;
 import com.todayit.course.dto.response.UpdateCoursePlaceOrdersResponse;
@@ -178,5 +179,23 @@ public class CourseController implements CourseApiDocs {
             CommonResponse.success(
                 CopyCourseResponse.from(
                     courseFacade.copyCourse(authentication.getName(), courseId))));
+  }
+
+  /**
+   * 인증된 회원의 코스 좋아요를 등록합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param authentication 인증된 회원 정보
+   * @return 코스 좋아요 결과
+   */
+  @Override
+  @PostMapping("/{courseId}/like")
+  public ResponseEntity<CommonResponse<CourseLikeResponse>> likeCourse(
+      @PathVariable int courseId, Authentication authentication) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            CommonResponse.success(
+                CourseLikeResponse.from(
+                    courseFacade.likeCourse(courseId, authentication.getName()))));
   }
 }

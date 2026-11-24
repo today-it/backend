@@ -6,7 +6,6 @@ import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
-import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
 import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
@@ -18,6 +17,7 @@ import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
 import com.todayit.course.service.model.CourseDetailResult;
+import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CoursePlaceItem;
 import com.todayit.course.service.model.CourseRegionResult;
@@ -118,50 +118,45 @@ public class CourseFacade {
                       entities.addedPlace().getOrder(),
                       entities.addedPlace().getStayMinute());
                 });
+
     return new AddCoursePlaceResult(addedPlace, places);
   }
 
   /**
-   * 코스에 포함된 장소들의 방문 순서를 일괄 재조정하고 변경된 전체 장소 목록을 반환합니다.
+   * 코스 장소들의 순서를 일괄 변경하고 정렬된 전체 장소 목록을 반환합니다.
    *
    * @param memberId 인증된 작성자 식별자
-   * @param command 순서 변경 명령
-   * @return 순서가 재조정된 전체 장소 상세 목록
-   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
+   * @param command 장소 순서 일괄 변경 조건
+   * @return 순서가 변경된 전체 장소 목록
    */
   @Transactional
   public UpdateCoursePlaceOrdersResult updateCoursePlaceOrders(
       String memberId, UpdateCoursePlaceOrdersCommand command) {
     List<CoursePlace> updatedPlaces = courseCommandService.updatePlaceOrders(memberId, command);
-    List<CoursePlaceDetailResult> places = toCoursePlaceDetailResults(updatedPlaces);
-    return new UpdateCoursePlaceOrdersResult(places);
+    return new UpdateCoursePlaceOrdersResult(toCoursePlaceDetailResults(updatedPlaces));
   }
 
   /**
-   * 코스에서 특정 장소를 삭제하고 후속 장소 순서를 앞당긴 후, 삭제된 장소 ID와 남은 장소 목록을 반환합니다.
+   * 코스에서 특정 장소를 삭제하고 순서가 재조정된 남은 장소 목록을 반환합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param courseId 코스 식별자
    * @param coursePlaceId 삭제할 코스 장소 식별자
-   * @return 삭제된 장소 ID 및 순서가 재조정된 남은 장소 목록
-   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
-   * @throws CoursePlaceNotFoundException 해당 코스 장소가 존재하지 않는 경우
+   * @return 삭제된 장소 식별자 및 남은 장소 목록
    */
   @Transactional
   public RemoveCoursePlaceResult removePlaceFromCourse(
       String memberId, int courseId, int coursePlaceId) {
     List<CoursePlace> remainingPlaces =
         courseCommandService.removePlace(memberId, courseId, coursePlaceId);
-    List<CoursePlaceDetailResult> places = toCoursePlaceDetailResults(remainingPlaces);
-    return new RemoveCoursePlaceResult(coursePlaceId, places);
+    return new RemoveCoursePlaceResult(coursePlaceId, toCoursePlaceDetailResults(remainingPlaces));
   }
 
   /**
-   * 코스를 물리적으로 완전히 삭제합니다.
+   * 코스를 영구 삭제합니다.
    *
    * @param memberId 인증된 작성자 식별자
    * @param courseId 삭제할 코스 식별자
-   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
    */
   @Transactional
   public void deleteCourse(String memberId, int courseId) {
@@ -245,16 +240,27 @@ public class CourseFacade {
         course.getBeforeVisit());
   }
 
-  private List<CoursePlaceDetailResult> toCoursePlaceDetailResults(List<CoursePlace> coursePlaces) {
-    if (coursePlaces == null || coursePlaces.isEmpty()) {
-      return List.of();
-    }
-    List<CoursePlace> sortedCoursePlaces =
-        coursePlaces.stream().sorted(Comparator.comparingInt(CoursePlace::getOrder)).toList();
-    List<Integer> placeIds = sortedCoursePlaces.stream().map(CoursePlace::getPlaceId).toList();
+  /**
+   * 인증된 회원의 코스 좋아요를 등록합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param memberId 회원 식별자
+   * @return 코스 좋아요 결과
+   */
+  @Transactional
+  public CourseLikeResult likeCourse(int courseId, String memberId) {
+    return courseCommandService.likeCourse(courseId, memberId);
+  }
+
+  private List<CoursePlaceDetailResult> toCoursePlaceDetailResults(
+      List<CoursePlace> originalPlaces) {
+    List<CoursePlace> sortedPlaces =
+        originalPlaces.stream().sorted(Comparator.comparingInt(CoursePlace::getOrder)).toList();
+
+    List<Integer> placeIds = sortedPlaces.stream().map(CoursePlace::getPlaceId).toList();
     Map<Integer, CoursePlaceItem> placeMap = placeCourseQueryService.findPlacesByIds(placeIds);
 
-    return sortedCoursePlaces.stream()
+    return sortedPlaces.stream()
         .map(
             cp -> {
               CoursePlaceItem item = placeMap.get(cp.getPlaceId());

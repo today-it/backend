@@ -14,17 +14,20 @@ import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
+import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.exception.CourseNotFoundException;
 import com.todayit.course.exception.CoursePlaceNotFoundException;
 import com.todayit.course.exception.InvalidCoursePlaceOrderException;
 import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
+import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
+import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,6 +45,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 @DisplayName("코스 생성 및 장소 추가 서비스")
 class CourseCommandServiceTest {
   @Mock private CourseRepository courses;
+  @Mock private CourseMemberLikeRepository courseMemberLikeRepository;
   @InjectMocks private CourseCommandService service;
 
   @Test
@@ -643,5 +647,172 @@ class CourseCommandServiceTest {
     CoursePlace cp = CoursePlace.create(course, placeId, assignedOrder, stayMinute);
     course.getCoursePlaces().add(cp);
     return cp;
+  }
+
+  @Test
+  @DisplayName("공개 확정 코스에 좋아요를 정상적으로 등록하고 최신 좋아요 수를 반환한다")
+  void likesCourseSuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "공개 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1)).thenReturn(1);
+    when(courseMemberLikeRepository.countByCourseId(1)).thenReturn(5L);
+
+    // when
+    CourseLikeResult result = service.likeCourse(1, "liker-member");
+
+    // then
+    assertThat(result.courseId()).isEqualTo(1);
+    assertThat(result.liked()).isTrue();
+    assertThat(result.likeCount()).isEqualTo(5L);
+    verify(courseMemberLikeRepository).insertIfAbsent("liker-member", 1);
+  }
+
+  @Test
+  @DisplayName("이미 좋아요를 누른 코스에 다시 좋아요를 요청하면 409 예외를 던진다")
+  void rejectsDuplicateLike() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "공개 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1)).thenReturn(0);
+
+    // when & then
+    CourseAlreadyLikedException exception =
+        assertThrows(
+            CourseAlreadyLikedException.class, () -> service.likeCourse(1, "liker-member"));
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.ALREADY_LIKED);
+  }
+
+  @Test
+  @DisplayName("존재하지 않는 코스에 좋아요를 요청하면 404 예외를 던진다")
+  void rejectsLikingNonExistentCourse() {
+    // given
+    when(courses.findById(999)).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.likeCourse(999, "liker-member"));
+  }
+
+  @Test
+  @DisplayName("삭제된 코스에 좋아요를 요청하면 404 예외를 던진다")
+  void rejectsLikingDeletedCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "삭제된 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.DELETED);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.likeCourse(1, "liker-member"));
+  }
+
+  @Test
+  @DisplayName("DRAFT 상태의 미확정 코스에 좋아요를 요청하면 404 예외를 던진다")
+  void rejectsLikingDraftCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시저장 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.DRAFT);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.likeCourse(1, "liker-member"));
+  }
+
+  @Test
+  @DisplayName("타인의 비공개 코스에 좋아요를 요청하면 존재 여부를 숨기기 위해 404 예외를 던진다")
+  void rejectsLikingOthersPrivateCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "비공개 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PRIVATE);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.likeCourse(1, "other-member"));
+  }
+
+  @Test
+  @DisplayName("본인의 비공개 활성 코스에는 좋아요를 등록할 수 있다")
+  void likesOwnPrivateActiveCourseSuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "내 비공개 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PRIVATE);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courseMemberLikeRepository.insertIfAbsent("owner-member", 1)).thenReturn(1);
+    when(courseMemberLikeRepository.countByCourseId(1)).thenReturn(1L);
+
+    // when
+    CourseLikeResult result = service.likeCourse(1, "owner-member");
+
+    // then
+    assertThat(result.courseId()).isEqualTo(1);
+    assertThat(result.liked()).isTrue();
+    assertThat(result.likeCount()).isEqualTo(1L);
   }
 }
