@@ -54,7 +54,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = CreateCourseResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -157,7 +156,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = CourseDetailResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -252,7 +250,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = AddCoursePlaceResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -418,7 +415,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = UpdateCoursePlaceOrdersResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -532,7 +528,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = RemoveCoursePlaceResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -688,7 +683,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = CopyCourseResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -793,7 +787,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = CourseLikeResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -882,7 +875,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = UpdateCourseVisibilityResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -979,7 +971,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = UpdateCourseConditionsResponse.class),
                 examples =
                     @ExampleObject(
                         value =
@@ -1094,7 +1085,6 @@ public interface CourseApiDocs {
         content =
             @Content(
                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = UpdateCourseTransportResponse.class),
                 examples =
                     @ExampleObject(
                         value =
