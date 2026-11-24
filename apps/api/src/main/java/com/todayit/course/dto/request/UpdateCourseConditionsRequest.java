@@ -55,7 +55,7 @@ public record UpdateCourseConditionsRequest(
         throw new CourseException(CourseErrorCode.INVALID_REGION);
       }
     }
-    if (startAt != null && endAt != null && !endAt.isAfter(startAt)) {
+    if (durationMinutes == null && startAt != null && endAt != null && !endAt.isAfter(startAt)) {
       throw new CourseException(CourseErrorCode.INVALID_END_AT);
     }
     if (durationMinutes != null && durationMinutes <= 0) {
