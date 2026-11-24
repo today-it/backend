@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -411,7 +412,15 @@ public class CourseCommandService {
     Course course = courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
     validateCourseForLike(course, memberId);
 
-    int insertedCount = courseMemberLikeRepository.insertIfAbsent(memberId, courseId);
+    int insertedCount;
+    try {
+      insertedCount = courseMemberLikeRepository.insertIfAbsent(memberId, courseId);
+    } catch (DataIntegrityViolationException e) {
+      if (isCourseForeignKeyViolation(e)) {
+        throw new CourseNotFoundException();
+      }
+      throw e;
+    }
     if (insertedCount == 0) {
       throw new CourseAlreadyLikedException();
     }
@@ -553,5 +562,21 @@ public class CourseCommandService {
     courseRepository.updateTransport(courseId, transport, now);
 
     return new UpdateCourseTransportResult(course.getCourseId(), transport);
+  }
+
+  private boolean isCourseForeignKeyViolation(DataIntegrityViolationException e) {
+    Throwable current = e;
+    while (current != null) {
+      String message = current.getMessage();
+      if (message != null) {
+        String lower = message.toLowerCase();
+        if (lower.contains("fk_course_member_like_course")
+            || (lower.contains("course_member_like") && lower.contains("course_id"))) {
+          return true;
+        }
+      }
+      current = current.getCause();
+    }
+    return false;
   }
 }

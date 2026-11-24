@@ -46,6 +46,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -822,6 +823,59 @@ class CourseCommandServiceTest {
     assertThat(result.courseId()).isEqualTo(1);
     assertThat(result.liked()).isTrue();
     assertThat(result.likeCount()).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("좋아요 등록 시 코스가 동시 삭제되어 외래키 위반이 발생하면 404 예외를 던진다")
+  void throwsCourseNotFoundWhenCourseDeletedConcurrentlyDuringLike() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "내 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            LocalDateTime.of(2026, 12, 1, 14, 0),
+            List.of(),
+            LocalDateTime.of(2026, 11, 24, 9, 0));
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1))
+        .thenThrow(
+            new DataIntegrityViolationException(
+                "violates foreign key constraint fk_course_member_like_course"));
+
+    // when & then
+    assertThrows(CourseNotFoundException.class, () -> service.likeCourse(1, "liker-member"));
+  }
+
+  @Test
+  @DisplayName("좋아요 등록 시 코스 외래키 외의 다른 무결성 위반은 예외를 그대로 전파한다")
+  void propagatesOtherDataIntegrityViolationsDuringLike() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "내 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            LocalDateTime.of(2026, 12, 1, 14, 0),
+            List.of(),
+            LocalDateTime.of(2026, 11, 24, 9, 0));
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findById(1)).thenReturn(Optional.of(course));
+    when(courseMemberLikeRepository.insertIfAbsent("liker-member", 1))
+        .thenThrow(new DataIntegrityViolationException("some other data integrity violation"));
+
+    // when & then
+    assertThrows(
+        DataIntegrityViolationException.class, () -> service.likeCourse(1, "liker-member"));
   }
 
   @Test
