@@ -14,6 +14,7 @@ import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
+import com.todayit.course.exception.CannotChangeDraftVisibilityException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
@@ -29,6 +30,7 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -814,5 +816,72 @@ class CourseCommandServiceTest {
     assertThat(result.courseId()).isEqualTo(1);
     assertThat(result.liked()).isTrue();
     assertThat(result.likeCount()).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("확정된 코스의 공개 범위를 성공적으로 변경한다")
+  void updatesCourseVisibilitySuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "내 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+
+    // when
+    UpdateCourseVisibilityResult result =
+        service.updateCourseVisibility("owner-member", 1, CourseVisibility.PRIVATE);
+
+    // then
+    assertThat(result.courseId()).isEqualTo(1);
+    assertThat(result.visibility()).isEqualTo(CourseVisibility.PRIVATE);
+    assertThat(result.updatedAt()).isNotNull();
+    assertThat(course.getVisibility()).isEqualTo(CourseVisibility.PRIVATE);
+  }
+
+  @Test
+  @DisplayName("코스가 존재하지 않거나 타인의 코스 또는 삭제된 코스이면 404 예외를 던진다")
+  void rejectsUpdatingVisibilityWhenCourseNotFoundOrDeleted() {
+    // given
+    when(courses.findByIdAndMemberIdForUpdate(999, "owner-member")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(
+        CourseNotFoundException.class,
+        () -> service.updateCourseVisibility("owner-member", 999, CourseVisibility.PUBLIC));
+  }
+
+  @Test
+  @DisplayName("임시저장(DRAFT) 상태의 코스는 공개 범위를 변경할 수 없다")
+  void rejectsUpdatingVisibilityForDraftCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시저장 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.DRAFT);
+    ReflectionTestUtils.setField(course, "visibility", CourseVisibility.PUBLIC);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(
+        CannotChangeDraftVisibilityException.class,
+        () -> service.updateCourseVisibility("owner-member", 1, CourseVisibility.PRIVATE));
   }
 }

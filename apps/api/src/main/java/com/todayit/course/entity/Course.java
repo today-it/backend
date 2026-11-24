@@ -1,5 +1,6 @@
 package com.todayit.course.entity;
 
+import com.todayit.course.exception.CannotChangeDraftVisibilityException;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -182,6 +183,23 @@ public class Course {
   public static Course createCopyDraft(
       String memberId, Course sourceCourse, LocalDateTime createdAt) {
     return new Course(memberId, sourceCourse, createdAt);
+  }
+
+  /**
+   * 확정된 코스의 공개 범위를 변경합니다.
+   *
+   * @param newVisibility 새로운 공개 범위
+   * @param updatedAt 변경 일시
+   * @throws CannotChangeDraftVisibilityException 임시저장 코스인 경우
+   */
+  public void changeVisibility(CourseVisibility newVisibility, LocalDateTime updatedAt) {
+    if (this.status == CourseStatus.DRAFT) {
+      throw new CannotChangeDraftVisibilityException();
+    }
+    if (newVisibility != null) {
+      this.visibility = newVisibility;
+      this.updatedAt = updatedAt;
+    }
   }
 
   public int getCourseId() {

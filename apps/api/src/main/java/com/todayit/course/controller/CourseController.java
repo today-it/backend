@@ -5,6 +5,7 @@ import com.todayit.course.controller.docs.CourseApiDocs;
 import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
+import com.todayit.course.dto.request.UpdateCourseVisibilityRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
 import com.todayit.course.dto.response.CopyCourseResponse;
 import com.todayit.course.dto.response.CourseDetailResponse;
@@ -12,11 +13,13 @@ import com.todayit.course.dto.response.CourseLikeResponse;
 import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.dto.response.RemoveCoursePlaceResponse;
 import com.todayit.course.dto.response.UpdateCoursePlaceOrdersResponse;
+import com.todayit.course.dto.response.UpdateCourseVisibilityResponse;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -197,5 +200,26 @@ public class CourseController implements CourseApiDocs {
             CommonResponse.success(
                 CourseLikeResponse.from(
                     courseFacade.likeCourse(courseId, authentication.getName()))));
+  }
+
+  /**
+   * 확정된 코스의 공개 범위를 변경합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 공개 범위 변경 요청 본문
+   * @param authentication 인증된 작성자 정보
+   * @return 변경된 공개 범위 정보
+   */
+  @Override
+  @PatchMapping("/{courseId}/visibility")
+  public ResponseEntity<CommonResponse<UpdateCourseVisibilityResponse>> updateCourseVisibility(
+      @PathVariable int courseId,
+      @RequestBody UpdateCourseVisibilityRequest request,
+      Authentication authentication) {
+    request.validate();
+    UpdateCourseVisibilityResult result =
+        courseFacade.updateCourseVisibility(
+            authentication.getName(), courseId, request.visibility());
+    return ResponseEntity.ok(CommonResponse.success(UpdateCourseVisibilityResponse.from(result)));
   }
 }

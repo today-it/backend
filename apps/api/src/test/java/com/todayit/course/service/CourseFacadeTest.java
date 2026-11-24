@@ -34,6 +34,7 @@ import com.todayit.course.service.model.MyCourseCardResult;
 import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -417,5 +418,24 @@ class CourseFacadeTest {
     assertThat(card.likeCount()).isEqualTo(7L);
     assertThat(card.sidoName()).isEqualTo("서울특별시");
     assertThat(card.sigunguName()).isEqualTo("종로구");
+  }
+
+  @Test
+  @DisplayName("코스 공개 범위 수정을 CourseCommandService에 정상적으로 위임한다")
+  void updatesCourseVisibilitySuccessfully() {
+    // given
+    LocalDateTime now = LocalDateTime.now();
+    UpdateCourseVisibilityResult expected =
+        new UpdateCourseVisibilityResult(1, CourseVisibility.PUBLIC, now);
+    when(courses.updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC))
+        .thenReturn(expected);
+
+    // when
+    UpdateCourseVisibilityResult result =
+        facade.updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+    verify(courses).updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
   }
 }

@@ -5,6 +5,7 @@ import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.Theme;
+import com.todayit.course.exception.CannotChangeDraftVisibilityException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
@@ -20,11 +21,11 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -298,55 +299,42 @@ public class CourseCommandService {
   private void reorderPlaces(Course course, List<Integer> newOrderPlaceIds) {
     List<CoursePlace> places = course.getCoursePlaces();
     if (newOrderPlaceIds == null
-        || newOrderPlaceIds.isEmpty()
-        || newOrderPlaceIds.size() != places.size()) {
+        || newOrderPlaceIds.size() != places.size()
+        || new HashSet<>(newOrderPlaceIds).size() != places.size()) {
       throw new InvalidCoursePlaceOrderException();
     }
-
-    Set<Integer> currentPlaceIds =
-        places.stream().map(CoursePlace::getCoursePlaceId).collect(Collectors.toSet());
-    Set<Integer> requestedPlaceIds = new HashSet<>(newOrderPlaceIds);
-
-    if (!currentPlaceIds.equals(requestedPlaceIds)) {
-      throw new InvalidCoursePlaceOrderException();
-    }
-
     Map<Integer, CoursePlace> placeMap =
         places.stream()
             .collect(Collectors.toMap(CoursePlace::getCoursePlaceId, Function.identity()));
-
     for (int i = 0; i < newOrderPlaceIds.size(); i++) {
-      CoursePlace place = placeMap.get(newOrderPlaceIds.get(i));
-      place.setOrder(-(i + 1));
+      int coursePlaceId = newOrderPlaceIds.get(i);
+      CoursePlace target = placeMap.get(coursePlaceId);
+      if (target == null) {
+        throw new InvalidCoursePlaceOrderException();
+      }
+      target.setOrder(-(i + 1));
     }
   }
 
   /**
-   * 임시 음수 순서로 설정된 장소들을 양수 순서로 반전하여 확정합니다.
+   * 임시 음수 순서로 변경된 장소들의 순서를 확정 양수 순서로 전환합니다.
    *
    * @param course 대상 코스 엔티티
    */
   private void confirmReorder(Course course) {
-    for (CoursePlace place : course.getCoursePlaces()) {
-      if (place.getOrder() < 0) {
-        place.setOrder(-place.getOrder());
-      }
+    for (CoursePlace cp : course.getCoursePlaces()) {
+      cp.setOrder(-cp.getOrder());
     }
   }
 
   /**
-   * 새 장소를 특정 순서에 삽입하기 위해 기존 장소들의 순서를 음수 임시 순서로 변경합니다.
+   * 특정 순서 이상의 장소들을 임시 음수 순서로 변경합니다.
    *
    * @param course 대상 코스 엔티티
-   * @param targetOrder 새로 추가할 장소의 목표 순서
+   * @param targetOrder 기준 순서
    * @return 임시 음수 순서로 변경된 장소 목록
    */
   private List<CoursePlace> shiftOrdersToNegative(Course course, int targetOrder) {
-    int maxOrder =
-        course.getCoursePlaces().stream().mapToInt(CoursePlace::getOrder).max().orElse(0);
-    if (targetOrder > maxOrder) {
-      return List.of();
-    }
     int assignedOrder = Math.max(1, targetOrder);
     List<CoursePlace> targets =
         course.getCoursePlaces().stream().filter(cp -> cp.getOrder() >= assignedOrder).toList();
@@ -419,6 +407,32 @@ public class CourseCommandService {
 
     long likeCount = courseMemberLikeRepository.countByCourseId(courseId);
     return new CourseLikeResult(courseId, true, likeCount);
+  }
+
+  /**
+   * 확정된 코스의 공개 범위를 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param visibility 변경할 공개 범위
+   * @return 변경된 공개 범위 결과
+   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
+   * @throws CannotChangeDraftVisibilityException 임시저장 코스인 경우
+   */
+  @Transactional
+  public UpdateCourseVisibilityResult updateCourseVisibility(
+      String memberId, int courseId, CourseVisibility visibility) {
+    Course course =
+        courseRepository
+            .findByIdAndMemberIdForUpdate(courseId, memberId)
+            .filter(c -> c.getDeletedAt() == null && c.getStatus() != CourseStatus.DELETED)
+            .orElseThrow(CourseNotFoundException::new);
+
+    LocalDateTime now = LocalDateTime.now();
+    course.changeVisibility(visibility, now);
+
+    return new UpdateCourseVisibilityResult(
+        course.getCourseId(), course.getVisibility(), course.getUpdatedAt());
   }
 
   private void validateCourseForLike(Course course, String memberId) {

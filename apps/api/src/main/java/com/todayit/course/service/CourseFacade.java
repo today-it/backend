@@ -27,6 +27,7 @@ import com.todayit.course.service.model.MyCourseCardResult;
 import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -258,6 +259,20 @@ public class CourseFacade implements MemberCourseQueryService {
   @Transactional
   public CourseLikeResult likeCourse(int courseId, String memberId) {
     return courseCommandService.likeCourse(courseId, memberId);
+  }
+
+  /**
+   * 확정된 코스의 공개 범위를 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param visibility 변경할 공개 범위
+   * @return 변경된 공개 범위 결과
+   */
+  @Transactional
+  public UpdateCourseVisibilityResult updateCourseVisibility(
+      String memberId, int courseId, CourseVisibility visibility) {
+    return courseCommandService.updateCourseVisibility(memberId, courseId, visibility);
   }
 
   private List<CoursePlaceDetailResult> toCoursePlaceDetailResults(

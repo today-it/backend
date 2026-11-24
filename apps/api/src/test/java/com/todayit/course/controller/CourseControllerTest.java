@@ -17,6 +17,7 @@ import com.todayit.common.exception.GlobalExceptionHandler;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
+import com.todayit.course.exception.CannotChangeDraftVisibilityException;
 import com.todayit.course.exception.CourseAlreadyLikedException;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
@@ -37,6 +38,7 @@ import com.todayit.course.service.model.CoursePlaceDetailResult;
 import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -1217,5 +1219,127 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
     verify(courseFacade).likeCourse(999, "member-1");
+  }
+
+  @Test
+  @DisplayName("코스 공개 범위 변경 요청이 유효하면 200과 변경 결과를 반환한다")
+  void updatesCourseVisibilitySuccessfully() throws Exception {
+    // given
+    LocalDateTime now = LocalDateTime.of(2026, 11, 24, 18, 0);
+    UpdateCourseVisibilityResult resultDto =
+        new UpdateCourseVisibilityResult(1, CourseVisibility.PUBLIC, now);
+    when(courseFacade.updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC))
+        .thenReturn(resultDto);
+
+    String request =
+        """
+        {
+          "visibility": "PUBLIC"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/visibility")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.visibility").value("PUBLIC"))
+        .andExpect(jsonPath("$.data.updatedAt").value("2026-11-24T18:00:00"));
+    verify(courseFacade).updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
+  }
+
+  @Test
+  @DisplayName("공개 범위가 누락되면 400 Bad Request와 INVALID_REQUEST를 반환한다")
+  void rejectsMissingVisibility() throws Exception {
+    // given
+    String request =
+        """
+        {}
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/visibility")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("임시저장(DRAFT) 상태의 코스 공개 범위를 변경하려고 하면 400 Bad Request를 반환한다")
+  void rejectsUpdatingVisibilityForDraftCourse() throws Exception {
+    // given
+    doThrow(new CannotChangeDraftVisibilityException())
+        .when(courseFacade)
+        .updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
+
+    String request =
+        """
+        {
+          "visibility": "PUBLIC"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/visibility")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("CANNOT_CHANGE_DRAFT_VISIBILITY"));
+    verify(courseFacade).updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 공개 범위 변경 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnUpdateVisibility() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException())
+        .when(courseFacade)
+        .updateCourseVisibility("member-1", 999, CourseVisibility.PUBLIC);
+
+    String request =
+        """
+        {
+          "visibility": "PUBLIC"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/999/visibility")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+    verify(courseFacade).updateCourseVisibility("member-1", 999, CourseVisibility.PUBLIC);
   }
 }
