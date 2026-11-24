@@ -120,7 +120,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
    * @param updatedAt 수정 시각
    * @return 변경된 행 수
    */
-  @Modifying(flushAutomatically = true)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update Course c
@@ -141,7 +141,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
    * @param updatedAt 수정 시각
    * @return 변경된 행 수
    */
-  @Modifying(flushAutomatically = true)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update Course c
@@ -160,7 +160,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
    * @param courseId 코스 식별자
    * @return 변경된 행 수
    */
-  @Modifying(flushAutomatically = true)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update Course c
@@ -179,7 +179,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
    * @param updatedAt 수정 시각
    * @return 변경된 행 수
    */
-  @Modifying(flushAutomatically = true)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update Course c
@@ -204,7 +204,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
    * @param updatedAt 수정 시각
    * @return 변경된 행 수
    */
-  @Modifying(flushAutomatically = true)
+  @Modifying(flushAutomatically = true, clearAutomatically = true)
   @Query(
       """
       update Course c
