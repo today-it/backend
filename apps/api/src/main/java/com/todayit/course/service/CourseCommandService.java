@@ -26,6 +26,7 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -523,5 +524,34 @@ public class CourseCommandService {
     return courseRepository
         .findByIdAndMemberIdForUpdate(command.courseId(), memberId)
         .orElseThrow(CourseNotFoundException::new);
+  }
+
+  /**
+   * 임시저장(DRAFT) 코스의 이동수단을 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param transport 변경할 이동수단
+   * @return 변경된 이동수단 결과
+   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
+   * @throws CannotEditActiveCourseException 확정(ACTIVE) 상태의 코스인 경우
+   */
+  @Transactional
+  public UpdateCourseTransportResult updateCourseTransport(
+      String memberId, int courseId, CourseTransport transport) {
+    Course course =
+        courseRepository
+            .findByIdAndMemberIdForUpdate(courseId, memberId)
+            .filter(c -> c.getDeletedAt() == null && c.getStatus() != CourseStatus.DELETED)
+            .orElseThrow(CourseNotFoundException::new);
+
+    if (course.getStatus() != CourseStatus.DRAFT) {
+      throw new CannotEditActiveCourseException();
+    }
+
+    LocalDateTime now = LocalDateTime.now();
+    courseRepository.updateTransport(courseId, transport, now);
+
+    return new UpdateCourseTransportResult(course.getCourseId(), transport);
   }
 }

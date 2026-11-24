@@ -4,6 +4,7 @@ import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.RegionCourse;
 import com.todayit.course.exception.CourseNotFoundException;
@@ -30,6 +31,7 @@ import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -277,6 +279,20 @@ public class CourseFacade implements MemberCourseQueryService {
   public UpdateCourseVisibilityResult updateCourseVisibility(
       String memberId, int courseId, CourseVisibility visibility) {
     return courseCommandService.updateCourseVisibility(memberId, courseId, visibility);
+  }
+
+  /**
+   * 임시저장(DRAFT) 코스의 이동수단을 변경합니다.
+   *
+   * @param memberId 인증된 작성자 식별자
+   * @param courseId 코스 식별자
+   * @param transport 변경할 이동수단
+   * @return 변경된 이동수단 결과
+   */
+  @Transactional
+  public UpdateCourseTransportResult updateCourseTransport(
+      String memberId, int courseId, CourseTransport transport) {
+    return courseCommandService.updateCourseTransport(memberId, courseId, transport);
   }
 
   /**

@@ -43,6 +43,7 @@ import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -1511,6 +1512,122 @@ class CourseControllerTest {
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/999/conditions")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("코스 이동수단을 정상적으로 변경하면 200과 변경된 정보를 반환한다")
+  void updatesCourseTransportSuccessfully() throws Exception {
+    // given
+    UpdateCourseTransportResult result =
+        new UpdateCourseTransportResult(1, CourseTransport.WALKING);
+    when(courseFacade.updateCourseTransport("member-1", 1, CourseTransport.WALKING))
+        .thenReturn(result);
+
+    String request =
+        """
+        {
+          "transport": "WALKING"
+        }
+        """;
+
+    // when
+    ResultActions response =
+        mvc.perform(
+            patch("/api/v1/courses/1/transport")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    response
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.transport").value("WALKING"));
+  }
+
+  @Test
+  @DisplayName("코스 이동수단이 누락되면 400을 반환한다")
+  void rejectsUpdatingTransportWhenMissingBody() throws Exception {
+    // given
+    String request =
+        """
+        {}
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/transport")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_TRANSPORT_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("확정된 코스의 이동수단을 변경하려고 하면 400을 반환한다")
+  void rejectsUpdatingTransportForActiveCourse() throws Exception {
+    // given
+    doThrow(new CannotEditActiveCourseException())
+        .when(courseFacade)
+        .updateCourseTransport(eq("member-1"), eq(1), eq(CourseTransport.CAR));
+
+    String request =
+        """
+        {
+          "transport": "CAR"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/1/transport")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(request));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("CANNOT_EDIT_ACTIVE_COURSE"));
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 이동수단 변경 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnUpdateTransport() throws Exception {
+    // given
+    doThrow(new CourseNotFoundException())
+        .when(courseFacade)
+        .updateCourseTransport(eq("member-1"), eq(999), eq(CourseTransport.CAR));
+
+    String request =
+        """
+        {
+          "transport": "CAR"
+        }
+        """;
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            patch("/api/v1/courses/999/transport")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));

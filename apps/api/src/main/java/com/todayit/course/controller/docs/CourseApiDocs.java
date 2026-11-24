@@ -7,6 +7,7 @@ import com.todayit.course.dto.request.AddCoursePlaceRequest;
 import com.todayit.course.dto.request.CreateCourseRequest;
 import com.todayit.course.dto.request.UpdateCourseConditionsRequest;
 import com.todayit.course.dto.request.UpdateCoursePlaceOrdersRequest;
+import com.todayit.course.dto.request.UpdateCourseTransportRequest;
 import com.todayit.course.dto.request.UpdateCourseVisibilityRequest;
 import com.todayit.course.dto.response.AddCoursePlaceResponse;
 import com.todayit.course.dto.response.CopyCourseResponse;
@@ -16,6 +17,7 @@ import com.todayit.course.dto.response.CreateCourseResponse;
 import com.todayit.course.dto.response.RemoveCoursePlaceResponse;
 import com.todayit.course.dto.response.UpdateCourseConditionsResponse;
 import com.todayit.course.dto.response.UpdateCoursePlaceOrdersResponse;
+import com.todayit.course.dto.response.UpdateCourseTransportResponse;
 import com.todayit.course.dto.response.UpdateCourseVisibilityResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -1071,5 +1073,101 @@ public interface CourseApiDocs {
   ResponseEntity<CommonResponse<UpdateCourseConditionsResponse>> updateCourseConditions(
       @Parameter(description = "코스 식별자입니다.", example = "1", required = true) int courseId,
       UpdateCourseConditionsRequest request,
+      @Parameter(hidden = true) Authentication authentication);
+
+  /**
+   * 임시저장(DRAFT) 코스의 이동수단을 변경합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param request 이동수단 변경 요청 본문
+   * @param authentication 인증된 작성자 정보
+   * @return 변경된 이동수단 정보
+   */
+  @Operation(
+      summary = "코스 이동수단 변경",
+      description = "임시저장(DRAFT) 코스의 이동수단을 변경합니다. 확정된 코스는 이동수단을 변경할 수 없습니다.",
+      security = @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH))
+  @ApiResponses({
+    @ApiResponse(
+        responseCode = "200",
+        description = "이동수단 변경 성공",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = UpdateCourseTransportResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {
+                      "success": true,
+                      "data": {
+                        "courseId": 1,
+                        "transport": "CAR"
+                      }
+                    }
+                    """))),
+    @ApiResponse(
+        responseCode = "400",
+        description = "요청 유효성 검증 실패 또는 수정 불가 상태",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = {
+                  @ExampleObject(
+                      name = "이동수단 누락",
+                      value =
+                          """
+                      {"success":false,"code":"COURSE_TRANSPORT_REQUIRED","message":"이동수단은 필수입니다."}
+                      """),
+                  @ExampleObject(
+                      name = "확정 코스 수정 불가",
+                      value =
+                          """
+                      {"success":false,"code":"CANNOT_EDIT_ACTIVE_COURSE","message":"확정된 코스는 생성 조건을 수정할 수 없습니다."}
+                      """)
+                })),
+    @ApiResponse(
+        responseCode = "401",
+        description = "인증 실패",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {"success":false,"code":"UNAUTHORIZED","message":"인증이 필요합니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "404",
+        description = "코스가 없거나 삭제되었거나 작성자가 아닌 경우",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            """
+                    {"success":false,"code":"COURSE_NOT_FOUND","message":"코스를 찾을 수 없습니다."}
+                    """))),
+    @ApiResponse(
+        responseCode = "500",
+        description = "서버 내부 오류",
+        content =
+            @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples =
+                    @ExampleObject(
+                        value =
+                            "{\"success\":false,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+  })
+  ResponseEntity<CommonResponse<UpdateCourseTransportResponse>> updateCourseTransport(
+      @Parameter(description = "코스 식별자입니다.", example = "1", required = true) int courseId,
+      UpdateCourseTransportRequest request,
       @Parameter(hidden = true) Authentication authentication);
 }

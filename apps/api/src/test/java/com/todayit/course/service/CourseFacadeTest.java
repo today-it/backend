@@ -36,6 +36,7 @@ import com.todayit.course.service.model.MyCourseSort;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
+import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -482,5 +483,23 @@ class CourseFacadeTest {
     assertThat(result.conditions().durationMinutes()).isEqualTo(240);
     assertThat(result.conditions().transport()).isEqualTo(CourseTransport.CAR);
     assertThat(result.updatedAt()).isEqualTo(updatedAt);
+  }
+
+  @Test
+  @DisplayName("코스 이동수단 변경을 CourseCommandService에 정상적으로 위임한다")
+  void updatesCourseTransportSuccessfully() {
+    // given
+    UpdateCourseTransportResult expected =
+        new UpdateCourseTransportResult(1, CourseTransport.WALKING);
+    when(courses.updateCourseTransport("member-1", 1, CourseTransport.WALKING))
+        .thenReturn(expected);
+
+    // when
+    UpdateCourseTransportResult result =
+        facade.updateCourseTransport("member-1", 1, CourseTransport.WALKING);
+
+    // then
+    assertThat(result).isEqualTo(expected);
+    verify(courses).updateCourseTransport("member-1", 1, CourseTransport.WALKING);
   }
 }

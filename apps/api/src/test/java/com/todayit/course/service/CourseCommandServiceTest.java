@@ -34,6 +34,7 @@ import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceEntities;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CreateCourseResult;
+import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -1059,5 +1060,70 @@ class CourseCommandServiceTest {
             eq(newEndAt),
             eq(CourseTransport.PUBLIC_TRANSPORT),
             any(LocalDateTime.class));
+  }
+
+  @Test
+  @DisplayName("임시저장(DRAFT) 코스의 이동수단을 정상 변경한다")
+  void updatesTransportSuccessfully() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+
+    // when
+    UpdateCourseTransportResult result =
+        service.updateCourseTransport("owner-member", 1, CourseTransport.WALKING);
+
+    // then
+    assertThat(result.courseId()).isEqualTo(1);
+    assertThat(result.transport()).isEqualTo(CourseTransport.WALKING);
+    verify(courses).updateTransport(eq(1), eq(CourseTransport.WALKING), any(LocalDateTime.class));
+  }
+
+  @Test
+  @DisplayName("확정(ACTIVE) 상태의 코스는 이동수단을 변경할 수 없다")
+  void rejectsUpdatingTransportForActiveCourse() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "확정 코스",
+            CourseTransport.CAR,
+            LocalDateTime.now(),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+    ReflectionTestUtils.setField(course, "status", CourseStatus.ACTIVE);
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+
+    // when & then
+    assertThrows(
+        CannotEditActiveCourseException.class,
+        () -> service.updateCourseTransport("owner-member", 1, CourseTransport.WALKING));
+    verify(courses, never())
+        .updateTransport(any(Integer.class), any(CourseTransport.class), any(LocalDateTime.class));
+  }
+
+  @Test
+  @DisplayName("코스가 존재하지 않거나 타인의 코스 또는 삭제된 코스이면 이동수단 변경 시 404 예외를 던진다")
+  void rejectsUpdatingTransportWhenCourseNotFoundOrDeleted() {
+    // given
+    when(courses.findByIdAndMemberIdForUpdate(999, "owner-member")).thenReturn(Optional.empty());
+
+    // when & then
+    assertThrows(
+        CourseNotFoundException.class,
+        () -> service.updateCourseTransport("owner-member", 999, CourseTransport.WALKING));
+    verify(courses, never())
+        .updateTransport(any(Integer.class), any(CourseTransport.class), any(LocalDateTime.class));
   }
 }

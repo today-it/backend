@@ -195,4 +195,25 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
       @Param("endAt") LocalDateTime endAt,
       @Param("transport") CourseTransport transport,
       @Param("updatedAt") LocalDateTime updatedAt);
+
+  /**
+   * 코스의 이동수단을 변경합니다.
+   *
+   * @param courseId 코스 식별자
+   * @param transport 변경할 이동수단
+   * @param updatedAt 수정 시각
+   * @return 변경된 행 수
+   */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      """
+      update Course c
+      set c.transport = :transport,
+          c.updatedAt = :updatedAt
+      where c.courseId = :courseId
+      """)
+  int updateTransport(
+      @Param("courseId") int courseId,
+      @Param("transport") CourseTransport transport,
+      @Param("updatedAt") LocalDateTime updatedAt);
 }
