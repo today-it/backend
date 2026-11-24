@@ -496,8 +496,15 @@ public class CourseCommandService {
       try {
         if (regionCode.length() == 2) {
           regionIds = regionQueryService.findRegionIds(regionCode, null);
+        } else if (regionCode.length() == 5) {
+          String sidoCode = regionCode.substring(0, 2);
+          String sigunguCode = regionCode.substring(2);
+          regionIds = regionQueryService.findRegionIds(sidoCode, sigunguCode);
         } else if (regionCode.length() == 3) {
           regionIds = regionQueryService.findRegionIds(null, regionCode);
+          if (regionQueryService.hasMultipleSidos(regionIds)) {
+            throw new CourseException(CourseErrorCode.INVALID_REGION);
+          }
         } else {
           throw new CourseException(CourseErrorCode.INVALID_REGION);
         }

@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @Schema(description = "임시저장 코스의 생성 조건을 수정하기 위한 요청 정보입니다. 모든 필드는 선택 사항이며, 입력된 값만 수정됩니다.")
 public record UpdateCourseConditionsRequest(
     @Schema(
-            description = "변경할 행정 지역 코드입니다. 시·도 2자리 또는 시·군·구 3자리로 입력합니다.",
+            description = "변경할 행정 지역 코드입니다. 시·도 2자리, 시·도+시·군·구 5자리, 또는 유일한 시·군·구 3자리로 입력합니다.",
             example = "11",
             nullable = true)
         String region,
@@ -49,7 +49,9 @@ public record UpdateCourseConditionsRequest(
   public void validate() {
     if (region != null && !region.isBlank()) {
       String strippedRegion = region.strip();
-      if (!strippedRegion.matches("^[0-9]{2}$") && !strippedRegion.matches("^[0-9]{3}$")) {
+      if (!strippedRegion.matches("^[0-9]{2}$")
+          && !strippedRegion.matches("^[0-9]{3}$")
+          && !strippedRegion.matches("^[0-9]{5}$")) {
         throw new CourseException(CourseErrorCode.INVALID_REGION);
       }
     }

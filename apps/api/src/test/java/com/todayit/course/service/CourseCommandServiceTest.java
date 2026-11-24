@@ -1180,4 +1180,74 @@ class CourseCommandServiceTest {
     verify(courses, never())
         .updateTransport(any(Integer.class), any(CourseTransport.class), any(LocalDateTime.class));
   }
+
+  @Test
+  @DisplayName("3자리 시군구 코드가 둘 이상의 시·도에 걸쳐 중복되면 유일하지 않으므로 예외를 던진다")
+  void throwsInvalidRegionWhenSigunguCodeSpansMultipleSidos() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member")).thenReturn(Optional.of(course));
+    when(regionQueryService.findRegionIds(null, "110")).thenReturn(List.of(1, 2));
+    when(regionQueryService.hasMultipleSidos(List.of(1, 2))).thenReturn(true);
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, "110", null, null, null, null);
+
+    // when & then
+    CourseException exception =
+        assertThrows(
+            CourseException.class, () -> service.updateCourseConditions("owner-member", command));
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.INVALID_REGION);
+  }
+
+  @Test
+  @DisplayName("5자리 시도+시군구 코드로 명확하게 단일 시군구를 지정하여 조건을 수정한다")
+  void updatesConditionsSuccessfullyWithFiveDigitRegionCode() {
+    // given
+    Course course =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(course, "courseId", 1);
+
+    Course updatedCourse =
+        Course.createDraft(
+            "owner-member",
+            "임시 코스",
+            CourseTransport.CAR,
+            LocalDateTime.of(2026, 12, 1, 10, 0),
+            null,
+            List.of(),
+            LocalDateTime.now());
+    ReflectionTestUtils.setField(updatedCourse, "courseId", 1);
+
+    when(courses.findByIdAndMemberIdForUpdate(1, "owner-member"))
+        .thenReturn(Optional.of(course), Optional.of(updatedCourse));
+    when(regionQueryService.findRegionIds("11", "110")).thenReturn(List.of(1));
+
+    UpdateCourseConditionsCommand command =
+        new UpdateCourseConditionsCommand(1, "11110", null, null, null, null);
+
+    // when
+    Course updated = service.updateCourseConditions("owner-member", command);
+
+    // then
+    assertThat(updated).isNotNull();
+    verify(regionQueryService).findRegionIds("11", "110");
+  }
 }
