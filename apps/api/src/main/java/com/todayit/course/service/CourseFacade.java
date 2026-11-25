@@ -7,15 +7,8 @@ import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
 import com.todayit.course.entity.RegionCourse;
-import com.todayit.course.exception.CannotChangeDraftVisibilityException;
-import com.todayit.course.exception.CannotEditActiveCourseException;
-import com.todayit.course.exception.CourseAlreadyLikedException;
+import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
-import com.todayit.course.exception.CourseNotFoundException;
-import com.todayit.course.exception.CoursePlaceNotFoundException;
-import com.todayit.course.exception.InvalidCoursePlaceOrderException;
-import com.todayit.course.exception.MaxPlaceDuplicationExceededException;
-import com.todayit.course.exception.PlaceNotFoundException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseScrapRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
@@ -107,14 +100,12 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param memberId 인증된 작성자 식별자
    * @param command 장소 추가 조건
    * @return 추가된 장소 상세 및 전체 정렬된 장소 목록
-   * @throws CourseNotFoundException 코스가 없거나 작성자가 아닌 경우
-   * @throws PlaceNotFoundException 장소가 없거나 삭제된 경우
-   * @throws MaxPlaceDuplicationExceededException 코스 내 동일 장소가 이미 2개인 경우
+   * @throws CourseException 코스가 없거나 작성자가 아닌 경우 / 장소가 없거나 삭제된 경우 / 코스 내 동일 장소가 이미 2개인 경우
    */
   @Transactional
   public AddCoursePlaceResult addPlaceToCourse(String memberId, AddCoursePlaceCommand command) {
     if (!placeCourseQueryService.existsActivePlace(command.placeId())) {
-      throw new PlaceNotFoundException();
+      throw new CourseException(CourseErrorCode.PLACE_NOT_FOUND);
     }
     AddCoursePlaceEntities entities = courseCommandService.addPlace(memberId, command);
     List<CoursePlaceDetailResult> places = toCoursePlaceDetailResults(entities.places());
@@ -150,8 +141,8 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param memberId 인증된 작성자 식별자
    * @param command 장소 순서 일괄 변경 조건
    * @return 순서가 변경된 전체 장소 목록
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
-   * @throws InvalidCoursePlaceOrderException 장소 목록이 null이거나 중복을 포함하거나 기존 코스 장소 목록과 일치하지 않는 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우 / 장소 목록이 null이거나 중복을 포함하거나 기존 코스 장소 목록과 일치하지
+   *     않는 경우
    */
   @Transactional
   public UpdateCoursePlaceOrdersResult updateCoursePlaceOrders(
@@ -167,8 +158,7 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param courseId 코스 식별자
    * @param coursePlaceId 삭제할 코스 장소 식별자
    * @return 삭제된 장소 식별자 및 남은 장소 목록
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
-   * @throws CoursePlaceNotFoundException 코스 내에 삭제할 장소가 없는 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우 / 코스 내에 삭제할 장소가 없는 경우
    */
   @Transactional
   public RemoveCoursePlaceResult removePlaceFromCourse(
@@ -183,7 +173,7 @@ public class CourseFacade implements MemberCourseQueryService {
    *
    * @param memberId 인증된 작성자 식별자
    * @param courseId 삭제할 코스 식별자
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
    */
   @Transactional
   public void deleteCourse(String memberId, int courseId) {
@@ -196,8 +186,7 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param memberId 복사를 요청한 회원 식별자
    * @param courseId 복사할 원본 코스 식별자
    * @return 복제된 코스 결과
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 타인의 비공개 코스인 경우
-   * @throws CourseException 임시저장(DRAFT) 상태의 코스를 복사하려는 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 타인의 비공개 코스인 경우 / 임시저장(DRAFT) 상태의 코스를 복사하려는 경우
    */
   @Transactional
   public CopyCourseResult copyCourse(String memberId, int courseId) {
@@ -219,13 +208,13 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param courseId 코스 식별자
    * @param memberId 요청 회원 식별자, 비회원이면 null
    * @return 코스 상세 정보
-   * @throws CourseNotFoundException 코스가 없거나 비공개 코스에 접근할 권한이 없는 경우
+   * @throws CourseException 코스가 없거나 비공개 코스에 접근할 권한이 없는 경우
    */
   @Transactional(readOnly = true)
   public CourseDetailResult getCourseDetail(int courseId, String memberId) {
     Course course = courseQueryService.getCourse(courseId);
     if (!canAccess(course, memberId)) {
-      throw new CourseNotFoundException();
+      throw new CourseException(CourseErrorCode.NOT_FOUND);
     }
 
     List<String> themeNames =
@@ -274,8 +263,7 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param courseId 코스 식별자
    * @param memberId 회원 식별자
    * @return 코스 좋아요 결과
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 임시저장이거나 타인의 비공개 코스인 경우
-   * @throws CourseAlreadyLikedException 이미 좋아요를 누른 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 임시저장이거나 타인의 비공개 코스인 경우 / 이미 좋아요를 누른 경우
    */
   @Transactional
   public CourseLikeResult likeCourse(int courseId, String memberId) {
@@ -289,8 +277,7 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param courseId 코스 식별자
    * @param visibility 변경할 공개 범위
    * @return 변경된 공개 범위 결과
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
-   * @throws CannotChangeDraftVisibilityException 임시저장(DRAFT) 코스의 공개 범위를 변경하려는 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우 / 임시저장(DRAFT) 코스의 공개 범위를 변경하려는 경우
    */
   @Transactional
   public UpdateCourseVisibilityResult updateCourseVisibility(
@@ -305,8 +292,7 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param courseId 코스 식별자
    * @param transport 변경할 이동수단
    * @return 변경된 이동수단 결과
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
-   * @throws CannotEditActiveCourseException 코스가 임시저장(DRAFT) 상태가 아닌 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우 / 코스가 임시저장(DRAFT) 상태가 아닌 경우
    */
   @Transactional
   public UpdateCourseTransportResult updateCourseTransport(
@@ -320,9 +306,8 @@ public class CourseFacade implements MemberCourseQueryService {
    * @param memberId 인증된 작성자 식별자
    * @param command 코스 생성 조건 수정 명령
    * @return 생성 조건 수정 결과
-   * @throws CourseNotFoundException 코스가 없거나 삭제되었거나 작성자가 아닌 경우
-   * @throws CannotEditActiveCourseException 코스가 임시저장(DRAFT) 상태가 아닌 경우
-   * @throws CourseException 지역 코드가 유효하지 않거나, 소요 시간 계산에 필요한 시작 시각이 없거나, 종료 시각이 시작 시각 이후가 아닌 경우
+   * @throws CourseException 코스가 없거나 삭제되었거나 작성자가 아닌 경우 / 코스가 임시저장(DRAFT) 상태가 아닌 경우 / 지역 코드가 유효하지
+   *     않거나, 소요 시간 계산에 필요한 시작 시각이 없거나, 종료 시각이 시작 시각 이후가 아닌 경우
    */
   @Transactional
   public UpdateCourseConditionsResult updateCourseConditions(

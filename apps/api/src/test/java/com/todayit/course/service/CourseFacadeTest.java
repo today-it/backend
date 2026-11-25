@@ -15,8 +15,8 @@ import com.todayit.course.entity.CoursePlace;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
-import com.todayit.course.exception.CourseNotFoundException;
-import com.todayit.course.exception.PlaceNotFoundException;
+import com.todayit.course.exception.CourseErrorCode;
+import com.todayit.course.exception.CourseException;
 import com.todayit.course.repository.CourseMemberLikeRepository;
 import com.todayit.course.repository.CourseScrapRepository;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
@@ -126,12 +126,16 @@ class CourseFacadeTest {
   @Test
   @DisplayName("장소가 존재하지 않거나 비활성 상태이면 PlaceNotFoundException을 던진다")
   void throwsExceptionWhenPlaceNotFound() {
-    // given
+    // Given
     AddCoursePlaceCommand command = new AddCoursePlaceCommand(1, 999, 1, 60);
     when(placeCourseQueryService.existsActivePlace(999)).thenReturn(false);
 
-    // when & then
-    assertThrows(PlaceNotFoundException.class, () -> facade.addPlaceToCourse("member-1", command));
+    // When
+    CourseException exception =
+        assertThrows(CourseException.class, () -> facade.addPlaceToCourse("member-1", command));
+
+    // Then
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.PLACE_NOT_FOUND);
     verifyNoInteractions(courses);
   }
 
@@ -219,9 +223,9 @@ class CourseFacadeTest {
   }
 
   @Test
-  @DisplayName("접근 권한이 없는 코스 상세 조회 시 CourseNotFoundException을 던진다")
+  @DisplayName("접근 권한이 없는 코스 상세 조회 시 CourseException을 던진다")
   void throwsExceptionWhenCannotAccessCourse() {
-    // given
+    // Given
     Course course =
         Course.createDraft(
             "member-1",
@@ -233,8 +237,12 @@ class CourseFacadeTest {
             LocalDateTime.now());
     when(courseQueryService.getCourse(1)).thenReturn(course);
 
-    // when & then
-    assertThrows(CourseNotFoundException.class, () -> facade.getCourseDetail(1, "member-2"));
+    // When
+    CourseException exception =
+        assertThrows(CourseException.class, () -> facade.getCourseDetail(1, "member-2"));
+
+    // Then
+    assertThat(exception.getErrorCode()).isEqualTo(CourseErrorCode.NOT_FOUND);
     verifyNoInteractions(placeCourseQueryService);
   }
 

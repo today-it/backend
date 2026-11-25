@@ -3,7 +3,8 @@ package com.todayit.course.service;
 import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CourseStatus;
-import com.todayit.course.exception.CourseNotFoundException;
+import com.todayit.course.exception.CourseErrorCode;
+import com.todayit.course.exception.CourseException;
 import com.todayit.course.repository.CourseRepository;
 import com.todayit.course.service.model.CourseResult;
 import com.todayit.course.service.model.CourseSort;
@@ -38,13 +39,16 @@ public class CourseQueryService implements CoursePlaceQueryService {
    *
    * @param courseId 코스 식별자
    * @return 조회된 코스 엔티티
-   * @throws CourseNotFoundException 코스가 없거나 삭제된 경우
+   * @throws CourseException 코스가 없거나 삭제된 경우
    */
   @Transactional(readOnly = true)
   public Course getCourse(int courseId) {
-    Course course = courseRepository.findById(courseId).orElseThrow(CourseNotFoundException::new);
+    Course course =
+        courseRepository
+            .findById(courseId)
+            .orElseThrow(() -> new CourseException(CourseErrorCode.NOT_FOUND));
     if (course.getDeletedAt() != null || course.getStatus() == CourseStatus.DELETED) {
-      throw new CourseNotFoundException();
+      throw new CourseException(CourseErrorCode.NOT_FOUND);
     }
     return course;
   }
