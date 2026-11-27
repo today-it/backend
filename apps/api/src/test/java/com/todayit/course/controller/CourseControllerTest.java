@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.todayit.common.exception.GlobalExceptionHandler;
+import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
@@ -21,22 +22,28 @@ import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.service.CourseFacade;
 import com.todayit.course.service.command.AddCoursePlaceCommand;
+import com.todayit.course.service.command.CourseSearchCommand;
 import com.todayit.course.service.command.CreateCourseCommand;
 import com.todayit.course.service.command.UpdateCourseConditionsCommand;
 import com.todayit.course.service.command.UpdateCoursePlaceOrdersCommand;
 import com.todayit.course.service.model.AddCoursePlaceResult;
 import com.todayit.course.service.model.CopyCourseResult;
+import com.todayit.course.service.model.CourseCardResult;
 import com.todayit.course.service.model.CourseConditionsResult;
 import com.todayit.course.service.model.CourseDetailResult;
+import com.todayit.course.service.model.CourseDurationFilter;
 import com.todayit.course.service.model.CourseLikeResult;
 import com.todayit.course.service.model.CoursePlaceDetailResult;
-import com.todayit.course.service.model.CourseRegionResult;
+import com.todayit.course.service.model.CourseScrapResult;
+import com.todayit.course.service.model.CourseSort;
 import com.todayit.course.service.model.CreateCourseResult;
 import com.todayit.course.service.model.RemoveCoursePlaceResult;
 import com.todayit.course.service.model.UpdateCourseConditionsResult;
 import com.todayit.course.service.model.UpdateCoursePlaceOrdersResult;
 import com.todayit.course.service.model.UpdateCourseTransportResult;
 import com.todayit.course.service.model.UpdateCourseVisibilityResult;
+import com.todayit.region.service.model.RegionFilter;
+import com.todayit.region.service.model.RegionSummaryResult;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,15 +60,15 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("코스 생성 HTTP 계약")
 class CourseControllerTest {
   @Mock private CourseFacade courseFacade;
+  @Mock private com.todayit.course.service.CourseRecommendationFacade recommendations;
   private MockMvc mvc;
 
   @BeforeEach
   void setUp() {
     mvc =
-        MockMvcBuilders.standaloneSetup(new CourseController(courseFacade))
+        MockMvcBuilders.standaloneSetup(new CourseController(courseFacade, recommendations))
             .setControllerAdvice(new GlobalExceptionHandler())
             .build();
   }
@@ -386,7 +393,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("지원하지 않는 콘셉트는 400과 UNSUPPORTED_COURSE_THEME을 반환한다")
   void returnsBadRequestWhenUnsupportedTheme() throws Exception {
-    // Given
+    // given
     when(courseFacade.createCourse(eq("member-1"), any()))
         .thenThrow(new CourseException(CourseErrorCode.UNSUPPORTED_THEME));
     String request =
@@ -399,7 +406,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses")
@@ -407,7 +414,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -436,16 +443,15 @@ class CourseControllerTest {
             1,
             "종로 데이트 코스",
             "종로 감성 카페 투어",
+            "오잇러버",
+            "https://example.com/profile.jpg",
             CourseTransport.WALKING,
             LocalDateTime.of(2026, 12, 1, 10, 0),
             LocalDateTime.of(2026, 12, 1, 18, 0),
             CourseStatus.DRAFT,
             CourseVisibility.PRIVATE,
             0,
-            "11",
-            "서울특별시",
-            "110",
-            "종로구",
+            new RegionSummaryResult("11", "서울특별시", "110", "종로구"),
             List.of("감성적", "여유로움"),
             true,
             List.of(place),
@@ -469,6 +475,9 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.courseId").value(1))
         .andExpect(jsonPath("$.data.title").value("종로 데이트 코스"))
         .andExpect(jsonPath("$.data.courseSummary").value("종로 감성 카페 투어"))
+        .andExpect(jsonPath("$.data.authorDisplayName").value("오잇러버"))
+        .andExpect(
+            jsonPath("$.data.authorProfileImageUrl").value("https://example.com/profile.jpg"))
         .andExpect(jsonPath("$.data.transport").value("WALKING"))
         .andExpect(jsonPath("$.data.status").value("DRAFT"))
         .andExpect(jsonPath("$.data.visibility").value("PRIVATE"))
@@ -476,10 +485,10 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.liked").value(false))
         .andExpect(jsonPath("$.data.scrapped").value(false))
         .andExpect(jsonPath("$.data.beforeVisit[0]").value("웨이팅이 있을 수 있습니다."))
-        .andExpect(jsonPath("$.data.sidoCode").value("11"))
-        .andExpect(jsonPath("$.data.sidoName").value("서울특별시"))
-        .andExpect(jsonPath("$.data.sigunguCode").value("110"))
-        .andExpect(jsonPath("$.data.sigunguName").value("종로구"))
+        .andExpect(jsonPath("$.data.region.sidoCode").value("11"))
+        .andExpect(jsonPath("$.data.region.sidoName").value("서울특별시"))
+        .andExpect(jsonPath("$.data.region.sigunguCode").value("110"))
+        .andExpect(jsonPath("$.data.region.sigunguName").value("종로구"))
         .andExpect(jsonPath("$.data.themes[0]").value("감성적"))
         .andExpect(jsonPath("$.data.themes[1]").value("여유로움"))
         .andExpect(jsonPath("$.data.places[0].coursePlaceId").value(1))
@@ -487,7 +496,7 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.places[0].name").value("블루보틀 삼청"))
         .andExpect(jsonPath("$.data.places[0].category").value("CAFE_DESSERT"))
         .andExpect(jsonPath("$.data.places[0].order").value(1))
-        .andExpect(jsonPath("$.data.places[0].stayMinute").value(60));
+        .andExpect(jsonPath("$.data.places[0].stayMinutes").value(60));
   }
 
   @Test
@@ -500,15 +509,14 @@ class CourseControllerTest {
             1,
             "종로 공개 코스",
             null,
+            "ToDayIt",
+            null,
             CourseTransport.WALKING,
             LocalDateTime.of(2026, 12, 1, 10, 0),
             null,
             CourseStatus.ACTIVE,
             CourseVisibility.PUBLIC,
             5,
-            null,
-            null,
-            null,
             null,
             List.of(),
             false,
@@ -528,6 +536,9 @@ class CourseControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.authorDisplayName").value("ToDayIt"))
+        .andExpect(jsonPath("$.data.authorProfileImageUrl").doesNotExist())
+        .andExpect(jsonPath("$.data.region").doesNotExist())
         .andExpect(jsonPath("$.data.isWriter").value(false))
         .andExpect(jsonPath("$.data.liked").value(false))
         .andExpect(jsonPath("$.data.scrapped").value(false))
@@ -538,17 +549,17 @@ class CourseControllerTest {
   @Test
   @DisplayName("존재하지 않거나 접근 권한이 없는 코스는 404와 COURSE_NOT_FOUND를 반환한다")
   void returnsNotFoundWhenCourseCannotBeAccessed() throws Exception {
-    // Given
+    // given
     when(courseFacade.getCourseDetail(99, "member-1"))
         .thenThrow(new CourseException(CourseErrorCode.NOT_FOUND));
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             get("/api/v1/courses/99")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -579,7 +590,7 @@ class CourseControllerTest {
         {
           "placeId": 10,
           "order": 1,
-          "stayMinute": 60
+          "stayMinutes": 60
         }
         """;
 
@@ -598,7 +609,7 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.addedPlace.coursePlaceId").value(1))
         .andExpect(jsonPath("$.data.addedPlace.placeId").value(10))
         .andExpect(jsonPath("$.data.addedPlace.order").value(1))
-        .andExpect(jsonPath("$.data.addedPlace.stayMinute").value(60))
+        .andExpect(jsonPath("$.data.addedPlace.stayMinutes").value(60))
         .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade).addPlaceToCourse("member-1", new AddCoursePlaceCommand(1, 10, 1, 60));
   }
@@ -612,7 +623,7 @@ class CourseControllerTest {
         {
           "placeId": null,
           "order": 1,
-          "stayMinute": 60
+          "stayMinutes": 60
         }
         """;
 
@@ -641,7 +652,7 @@ class CourseControllerTest {
         {
           "placeId": 10,
           "order": 0,
-          "stayMinute": 60
+          "stayMinutes": 60
         }
         """;
 
@@ -670,7 +681,7 @@ class CourseControllerTest {
         {
           "placeId": 10,
           "order": 1,
-          "stayMinute": -10
+          "stayMinutes": -10
         }
         """;
 
@@ -699,7 +710,7 @@ class CourseControllerTest {
         {
           "placeId": 10,
           "order": 1,
-          "stayMinute": 1441
+          "stayMinutes": 1441
         }
         """;
 
@@ -757,7 +768,7 @@ class CourseControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.addedPlace.order").value(1))
-        .andExpect(jsonPath("$.data.addedPlace.stayMinute").value(0))
+        .andExpect(jsonPath("$.data.addedPlace.stayMinutes").value(0))
         .andExpect(jsonPath("$.data.places").isArray());
     verify(courseFacade).addPlaceToCourse("member-1", new AddCoursePlaceCommand(1, 10, null, 0));
   }
@@ -765,7 +776,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("코스를 찾을 수 없으면 404와 COURSE_NOT_FOUND를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnAddPlace() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class));
@@ -776,7 +787,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/999/places")
@@ -784,7 +795,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -794,7 +805,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("장소를 찾을 수 없거나 삭제된 장소이면 404와 PLACE_NOT_FOUND를 반환한다")
   void returnsNotFoundWhenPlaceNotFoundOnAddPlace() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.PLACE_NOT_FOUND))
         .when(courseFacade)
         .addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class));
@@ -805,7 +816,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/1/places")
@@ -813,7 +824,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -823,7 +834,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("동일 장소 중복 추가 횟수(2회)를 초과하면 400과 MAX_PLACE_DUPLICATION_EXCEEDED를 반환한다")
   void returnsBadRequestWhenMaxDuplicationExceeded() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.MAX_PLACE_DUPLICATION_EXCEEDED))
         .when(courseFacade)
         .addPlaceToCourse(eq("member-1"), any(AddCoursePlaceCommand.class));
@@ -834,7 +845,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/1/places")
@@ -842,7 +853,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -938,7 +949,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("순서 변경 시 코스를 찾을 수 없거나 작성자가 아니면 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnReorder() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .updateCoursePlaceOrders(eq("member-1"), any(UpdateCoursePlaceOrdersCommand.class));
@@ -949,7 +960,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/999/places/order")
@@ -957,7 +968,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -967,7 +978,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("순서 변경 시 전달된 장소 목록이 코스 장소와 일치하지 않으면 400을 반환한다")
   void returnsBadRequestWhenFacadeRejectsCoursePlaceOrder() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.INVALID_ORDER))
         .when(courseFacade)
         .updateCoursePlaceOrders(eq("member-1"), any(UpdateCoursePlaceOrdersCommand.class));
@@ -978,7 +989,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/1/places/order")
@@ -986,7 +997,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -1018,18 +1029,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("장소 삭제 시 코스를 찾을 수 없거나 작성자가 아니면 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnDeletePlace() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .removePlaceFromCourse("member-1", 999, 10);
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             delete("/api/v1/courses/999/places/10")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1039,18 +1050,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("장소 삭제 시 코스 내 장소를 찾을 수 없으면 404를 반환한다")
   void returnsNotFoundWhenCoursePlaceNotFoundOnDeletePlace() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.COURSE_PLACE_NOT_FOUND))
         .when(courseFacade)
         .removePlaceFromCourse("member-1", 1, 999);
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             delete("/api/v1/courses/1/places/999")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1060,11 +1071,12 @@ class CourseControllerTest {
   @Test
   @DisplayName("코스를 정상적으로 영구 삭제하고 204를 반환한다")
   void deletesCourseSuccessfully() throws Exception {
+    // given
+    UsernamePasswordAuthenticationToken principal =
+        new UsernamePasswordAuthenticationToken("member-1", null, List.of());
+
     // when
-    ResultActions result =
-        mvc.perform(
-            delete("/api/v1/courses/1")
-                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+    ResultActions result = mvc.perform(delete("/api/v1/courses/1").principal(principal));
 
     // then
     result.andExpect(status().isNoContent());
@@ -1074,18 +1086,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("코스 삭제 시 코스를 찾을 수 없거나 작성자가 아니면 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnDeleteCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .deleteCourse("member-1", 999);
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             delete("/api/v1/courses/999")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1122,18 +1134,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("코스 복사 시 코스를 찾을 수 없거나 타인의 비공개 코스이면 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnCopyCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .copyCourse("member-1", 999);
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/999/copy")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1143,18 +1155,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("코스 복사 시 DRAFT 상태의 코스이면 400과 CANNOT_COPY_DRAFT를 반환한다")
   void returnsBadRequestWhenCopyCourseIsDraft() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.CANNOT_COPY_DRAFT))
         .when(courseFacade)
         .copyCourse("member-1", 1);
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/1/copy")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -1187,18 +1199,18 @@ class CourseControllerTest {
   @Test
   @DisplayName("이미 좋아요를 누른 코스에 좋아요 요청 시 409 Conflict를 반환한다")
   void returnsConflictWhenCourseAlreadyLiked() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.ALREADY_LIKED))
         .when(courseFacade)
         .likeCourse(1, "member-1");
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/1/like")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.success").value(false))
@@ -1209,23 +1221,136 @@ class CourseControllerTest {
   @Test
   @DisplayName("존재하지 않거나 비활성·삭제된 코스에 좋아요 요청 시 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnLikeCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .likeCourse(999, "member-1");
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             post("/api/v1/courses/999/like")
                 .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
     verify(courseFacade).likeCourse(999, "member-1");
+  }
+
+  @Test
+  @DisplayName("코스 스크랩 등록 요청이 유효하면 201과 스크랩 결과를 반환한다")
+  void scrapsCourseSuccessfully() throws Exception {
+    // given
+    CourseScrapResult scrapResult = new CourseScrapResult(1, true, 18L);
+    when(courseFacade.scrapCourse(1, "member-1")).thenReturn(scrapResult);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.scrapped").value(true))
+        .andExpect(jsonPath("$.data.scrapCount").value(18));
+    verify(courseFacade).scrapCourse(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("이미 스크랩한 코스에 스크랩 요청 시 409 Conflict를 반환한다")
+  void returnsConflictWhenCourseAlreadyScrapped() throws Exception {
+    // given
+    doThrow(new CourseException(CourseErrorCode.ALREADY_SCRAPPED))
+        .when(courseFacade)
+        .scrapCourse(1, "member-1");
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/1/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_ALREADY_SCRAPPED"))
+        .andExpect(jsonPath("$.message").value("이미 스크랩한 코스입니다."));
+    verify(courseFacade).scrapCourse(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 비활성·삭제된 코스에 스크랩 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnScrapCourse() throws Exception {
+    // given
+    doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
+        .when(courseFacade)
+        .scrapCourse(999, "member-1");
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            post("/api/v1/courses/999/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+    verify(courseFacade).scrapCourse(999, "member-1");
+  }
+
+  @Test
+  @DisplayName("코스 스크랩 취소 요청이 유효하면 200과 스크랩 취소 결과를 반환한다")
+  void cancelsCourseScrapSuccessfully() throws Exception {
+    // given
+    CourseScrapResult scrapResult = new CourseScrapResult(1, false, 17L);
+    when(courseFacade.cancelCourseScrap(1, "member-1")).thenReturn(scrapResult);
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            delete("/api/v1/courses/1/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.courseId").value(1))
+        .andExpect(jsonPath("$.data.scrapped").value(false))
+        .andExpect(jsonPath("$.data.scrapCount").doesNotExist());
+    verify(courseFacade).cancelCourseScrap(1, "member-1");
+  }
+
+  @Test
+  @DisplayName("존재하지 않거나 비활성·삭제된 코스에 스크랩 취소 요청 시 404를 반환한다")
+  void returnsNotFoundWhenCourseNotFoundOnCancelCourseScrap() throws Exception {
+    // given
+    doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
+        .when(courseFacade)
+        .cancelCourseScrap(999, "member-1");
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            delete("/api/v1/courses/999/scrap")
+                .principal(new UsernamePasswordAuthenticationToken("member-1", null, List.of())));
+
+    // then
+    result
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+    verify(courseFacade).cancelCourseScrap(999, "member-1");
   }
 
   @Test
@@ -1291,7 +1416,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("임시저장(DRAFT) 상태의 코스 공개 범위를 변경하려고 하면 400 Bad Request를 반환한다")
   void rejectsUpdatingVisibilityForDraftCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.CANNOT_CHANGE_DRAFT_VISIBILITY))
         .when(courseFacade)
         .updateCourseVisibility("member-1", 1, CourseVisibility.PUBLIC);
@@ -1303,7 +1428,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/1/visibility")
@@ -1311,7 +1436,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -1322,7 +1447,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 공개 범위 변경 요청 시 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnUpdateVisibility() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .updateCourseVisibility("member-1", 999, CourseVisibility.PUBLIC);
@@ -1334,7 +1459,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/999/visibility")
@@ -1342,7 +1467,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1360,14 +1485,14 @@ class CourseControllerTest {
 
     CourseConditionsResult conditionsResult =
         new CourseConditionsResult(
-            new CourseRegionResult("11", "서울특별시", "110", "종로구"),
+            new RegionSummaryResult("11", "서울특별시", "110", "종로구"),
             startAt,
             endAt,
             240,
             CourseTransport.CAR);
 
     UpdateCourseConditionsResult expectedResult =
-        new UpdateCourseConditionsResult(1, conditionsResult, List.of(), updatedAt);
+        new UpdateCourseConditionsResult(1, conditionsResult, List.of(), updatedAt, 3L);
 
     when(courseFacade.updateCourseConditions(
             eq("member-1"), any(UpdateCourseConditionsCommand.class)))
@@ -1406,6 +1531,7 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data.conditions.durationMinutes").value(240))
         .andExpect(jsonPath("$.data.conditions.transport").value("CAR"))
         .andExpect(jsonPath("$.data.places").isArray())
+        .andExpect(jsonPath("$.data.scrapCount").value(3))
         .andExpect(jsonPath("$.data.updatedAt").value("2026-11-24T18:00:00"));
   }
 
@@ -1467,7 +1593,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("확정(ACTIVE) 상태의 코스 생성 조건을 수정하려고 하면 400 Bad Request를 반환한다")
   void rejectsUpdatingConditionsWhenActiveCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.CANNOT_EDIT_ACTIVE_COURSE))
         .when(courseFacade)
         .updateCourseConditions(eq("member-1"), any(UpdateCourseConditionsCommand.class));
@@ -1479,7 +1605,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/1/conditions")
@@ -1487,7 +1613,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -1497,7 +1623,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 조건 수정 요청 시 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnUpdateConditions() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .updateCourseConditions(eq("member-1"), any(UpdateCourseConditionsCommand.class));
@@ -1509,7 +1635,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/999/conditions")
@@ -1517,7 +1643,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
@@ -1583,7 +1709,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("확정된 코스의 이동수단을 변경하려고 하면 400을 반환한다")
   void rejectsUpdatingTransportForActiveCourse() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.CANNOT_EDIT_ACTIVE_COURSE))
         .when(courseFacade)
         .updateCourseTransport(eq("member-1"), eq(1), eq(CourseTransport.CAR));
@@ -1595,7 +1721,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/1/transport")
@@ -1603,7 +1729,7 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.success").value(false))
@@ -1613,7 +1739,7 @@ class CourseControllerTest {
   @Test
   @DisplayName("존재하지 않거나 삭제된 코스 또는 타인의 코스 이동수단 변경 요청 시 404를 반환한다")
   void returnsNotFoundWhenCourseNotFoundOnUpdateTransport() throws Exception {
-    // Given
+    // given
     doThrow(new CourseException(CourseErrorCode.NOT_FOUND))
         .when(courseFacade)
         .updateCourseTransport(eq("member-1"), eq(999), eq(CourseTransport.CAR));
@@ -1625,7 +1751,7 @@ class CourseControllerTest {
         }
         """;
 
-    // When
+    // when
     ResultActions result =
         mvc.perform(
             patch("/api/v1/courses/999/transport")
@@ -1633,10 +1759,154 @@ class CourseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(request));
 
-    // Then
+    // then
     result
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.success").value(false))
         .andExpect(jsonPath("$.code").value("COURSE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("코스 목록 및 필터 조회 시 조건에 맞는 페이지 응답을 반환한다")
+  void findsCoursesWithFiltersSuccessfully() throws Exception {
+    // given
+    LocalDateTime createdAt = LocalDateTime.of(2026, 11, 20, 10, 0);
+    LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 20, 12, 0);
+    CourseCardResult card =
+        new CourseCardResult(
+            1,
+            "행궁동 로맨틱 산책 코스",
+            "행궁동 일대를 여유롭게 산책하는 데이트 코스입니다.",
+            "https://example.com/place.jpg",
+            new RegionSummaryResult("41", "경기도", "111", "수원시 장안구"),
+            List.of("로맨틱", "아늑함"),
+            180,
+            CourseTransport.WALKING,
+            CourseStatus.ACTIVE,
+            CourseVisibility.PUBLIC,
+            3,
+            128L,
+            createdAt,
+            updatedAt);
+    CourseSearchCommand expectedCommand =
+        new CourseSearchCommand(
+            List.of(new RegionFilter("41", List.of("111"))),
+            List.of("로맨틱", "아늑함"),
+            CourseDurationFilter.ALL,
+            CourseTransport.WALKING,
+            CourseSort.POPULAR,
+            0,
+            20);
+    when(courseFacade.findCourses(expectedCommand))
+        .thenReturn(new PageResult<>(List.of(card), 0, 20, 1));
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            get("/api/v1/courses")
+                .param("regions", "[{\"sidoCode\":\"41\",\"sigunguCodes\":[\"111\"]}]")
+                .param("themes", "로맨틱", "아늑함")
+                .param("duration", "ALL")
+                .param("transport", "WALKING")
+                .param("sort", "POPULAR")
+                .param("page", "0")
+                .param("size", "20"));
+
+    // then
+    result
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.content[0].courseId").value(1))
+        .andExpect(jsonPath("$.data.content[0].title").value("행궁동 로맨틱 산책 코스"))
+        .andExpect(
+            jsonPath("$.data.content[0].courseSummary").value("행궁동 일대를 여유롭게 산책하는 데이트 코스입니다."))
+        .andExpect(
+            jsonPath("$.data.content[0].thumbnailUrl").value("https://example.com/place.jpg"))
+        .andExpect(jsonPath("$.data.content[0].region.sidoCode").value("41"))
+        .andExpect(jsonPath("$.data.content[0].region.sidoName").value("경기도"))
+        .andExpect(jsonPath("$.data.content[0].region.sigunguCode").value("111"))
+        .andExpect(jsonPath("$.data.content[0].region.sigunguName").value("수원시 장안구"))
+        .andExpect(jsonPath("$.data.content[0].themes[0]").value("로맨틱"))
+        .andExpect(jsonPath("$.data.content[0].themes[1]").value("아늑함"))
+        .andExpect(jsonPath("$.data.content[0].durationMinutes").value(180))
+        .andExpect(jsonPath("$.data.content[0].transport").value("WALKING"))
+        .andExpect(jsonPath("$.data.content[0].status").value("ACTIVE"))
+        .andExpect(jsonPath("$.data.content[0].visibility").value("PUBLIC"))
+        .andExpect(jsonPath("$.data.content[0].placeCount").value(3))
+        .andExpect(jsonPath("$.data.content[0].likeCount").value(128))
+        .andExpect(jsonPath("$.data.page").value(0))
+        .andExpect(jsonPath("$.data.size").value(20))
+        .andExpect(jsonPath("$.data.totalElements").value(1))
+        .andExpect(jsonPath("$.data.totalPages").value(1));
+    verify(courseFacade).findCourses(expectedCommand);
+  }
+
+  @Test
+  @DisplayName("코스 필터 조회 시 콘셉트가 2개를 초과하면 400과 INVALID_REQUEST를 반환한다")
+  void rejectsTooManyThemesOnFindCourses() throws Exception {
+    // given
+
+    // when
+    ResultActions result = mvc.perform(get("/api/v1/courses").param("themes", "로맨틱", "아늑함", "감성적"));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("코스 필터 조회 시 지원하지 않는 소요 시간 필터이면 400과 INVALID_REQUEST를 반환한다")
+  void rejectsUnsupportedDurationOnFindCourses() throws Exception {
+    // given
+
+    // when
+    ResultActions result = mvc.perform(get("/api/v1/courses").param("duration", "120"));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("코스 필터 조회 시 지역 필터 JSON 형식이 잘못되면 400과 INVALID_REGION_PATH를 반환한다")
+  void rejectsInvalidRegionsJsonOnFindCourses() throws Exception {
+    // given
+
+    // when
+    ResultActions result = mvc.perform(get("/api/v1/courses").param("regions", "invalid-json"));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("INVALID_REGION_PATH"));
+    verifyNoInteractions(courseFacade);
+  }
+
+  @Test
+  @DisplayName("코스 필터 조회 시 끝자리가 0인 시군구 코드가 시도당 3개를 초과하면 400과 EXCEEDED_SIGUNGU_LIMIT을 반환한다")
+  void rejectsExceededSigunguLimitOnFindCourses() throws Exception {
+    // given
+
+    // when
+    ResultActions result =
+        mvc.perform(
+            get("/api/v1/courses")
+                .param(
+                    "regions",
+                    "[{\"sidoCode\":\"11\",\"sigunguCodes\":[\"680\",\"650\",\"710\",\"110\"]}]"));
+
+    // then
+    result
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.code").value("EXCEEDED_SIGUNGU_LIMIT"));
+    verifyNoInteractions(courseFacade);
   }
 }

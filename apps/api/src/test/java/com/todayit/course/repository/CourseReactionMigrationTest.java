@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @SpringBootTest
 @Transactional
-@DisplayName("코스 좋아요·스크랩 마이그레이션")
 class CourseReactionMigrationTest {
   @Autowired private EntityManager entities;
   @Autowired private JdbcTemplate jdbc;
@@ -116,6 +115,25 @@ class CourseReactionMigrationTest {
     assertThat(row.get("created_at")).isNotNull();
     assertThat(row.get("updated_at")).isNull();
     assertThat(row.get("deleted_at")).isNull();
+  }
+
+  @Test
+  @DisplayName("동일한 회원의 동일 코스 중복 스크랩은 UNIQUE 제약으로 거부한다")
+  void rejectsDuplicateScrap() {
+    // given
+    String sql =
+        "insert into course_scrap (member_id, course_id, is_active, is_delete) values (?, ?, true, false)";
+    jdbc.update(sql, MEMBER_ID, courseId);
+
+    // when
+    DataIntegrityViolationException exception =
+        assertThrows(
+            DataIntegrityViolationException.class, () -> jdbc.update(sql, MEMBER_ID, courseId));
+
+    // then
+    assertThat(exception.getMostSpecificCause()).isInstanceOf(SQLException.class);
+    SQLException cause = (SQLException) exception.getMostSpecificCause();
+    assertThat(cause.getSQLState()).isEqualTo("23505");
   }
 
   @Test

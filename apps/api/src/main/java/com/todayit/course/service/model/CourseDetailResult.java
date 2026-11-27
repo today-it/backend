@@ -3,6 +3,7 @@ package com.todayit.course.service.model;
 import com.todayit.course.entity.CourseStatus;
 import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.entity.CourseVisibility;
+import com.todayit.region.service.model.RegionSummaryResult;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,16 +13,15 @@ import java.util.List;
  * @param courseId 코스 식별자
  * @param title 코스명
  * @param courseSummary 코스 요약
+ * @param authorDisplayName 작성자 공개 표시명
+ * @param authorProfileImageUrl 공개 표시 가능한 작성자 프로필 이미지 URL, 없으면 null
  * @param transport 이동수단
  * @param startAt 코스 시작 일시
  * @param endAt 코스 종료 일시, 없으면 null
  * @param status 코스 상태
  * @param visibility 코스 공개 여부
  * @param viewCount 조회수
- * @param sidoCode 시·도 코드, 없으면 null
- * @param sidoName 시·도 이름, 없으면 null
- * @param sigunguCode 시·군·구 코드, 없으면 null
- * @param sigunguName 시·군·구 이름, 없으면 null
+ * @param region 코스 지역 요약 정보, 설정되지 않았으면 null
  * @param themes 콘셉트 목록
  * @param isWriter 요청 회원이 작성자인지 여부
  * @param places 포함된 장소 목록
@@ -35,16 +35,15 @@ public record CourseDetailResult(
     int courseId,
     String title,
     String courseSummary,
+    String authorDisplayName,
+    String authorProfileImageUrl,
     CourseTransport transport,
     LocalDateTime startAt,
     LocalDateTime endAt,
     CourseStatus status,
     CourseVisibility visibility,
     int viewCount,
-    String sidoCode,
-    String sidoName,
-    String sigunguCode,
-    String sigunguName,
+    RegionSummaryResult region,
     List<String> themes,
     boolean isWriter,
     List<CoursePlaceDetailResult> places,
@@ -60,16 +59,15 @@ public record CourseDetailResult(
    * @param courseId 코스 식별자
    * @param title 코스명
    * @param courseSummary 코스 요약
+   * @param authorDisplayName 작성자 공개 표시명
+   * @param authorProfileImageUrl 작성자 프로필 이미지 URL
    * @param transport 이동수단
    * @param startAt 코스 시작 일시
    * @param endAt 코스 종료 일시
    * @param status 코스 상태
    * @param visibility 코스 공개 여부
    * @param viewCount 조회수
-   * @param sidoCode 시·도 코드
-   * @param sidoName 시·도 이름
-   * @param sigunguCode 시·군·구 코드
-   * @param sigunguName 시·군·구 이름
+   * @param region 코스 지역 요약 정보
    * @param themes 콘셉트 목록
    * @param isWriter 작성자 여부
    * @param places 장소 목록

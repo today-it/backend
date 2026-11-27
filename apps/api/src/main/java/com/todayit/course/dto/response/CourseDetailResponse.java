@@ -14,16 +14,15 @@ import java.util.List;
  * @param courseId 코스 식별자
  * @param title 코스 이름, 없으면 null
  * @param courseSummary 코스 요약 설명, 없으면 null
+ * @param authorDisplayName 작성자 공개 표시명
+ * @param authorProfileImageUrl 공개 표시 가능한 작성자 프로필 이미지 URL, 없으면 null
  * @param transport 이동 수단, 없으면 null
  * @param startAt 코스 시작 일시, 없으면 null
  * @param endAt 코스 종료 일시, 없으면 null
  * @param status 코스 상태
  * @param visibility 코스 공개 여부
  * @param viewCount 조회수
- * @param sidoCode 시·도 코드, 없으면 null
- * @param sidoName 시·도 명칭, 없으면 null
- * @param sigunguCode 시·군·구 코드, 없으면 null
- * @param sigunguName 시·군·구 명칭, 없으면 null
+ * @param region 코스 지역 요약 정보, 없으면 null
  * @param themes 코스 콘셉트 목록
  * @param isWriter 현재 요청 회원이 코스 작성자인지 여부
  * @param liked 현재 요청 회원의 코스 좋아요 여부
@@ -47,6 +46,16 @@ public record CourseDetailResponse(
             example = "카페와 산책을 즐기는 코스",
             nullable = true)
         String courseSummary,
+    @Schema(
+            description = "작성자 공개 표시명입니다. 활성 작성자는 현재 닉네임, 탈퇴·제재된 작성자의 유지 코스는 ToDayIt을 반환합니다.",
+            example = "오잇러버",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+        String authorDisplayName,
+    @Schema(
+            description = "공개 표시 가능한 작성자 프로필 이미지 URL입니다. 이미지가 미등록·삭제됐거나 공개 대상이 아니면 null을 반환합니다.",
+            example = "https://example.com/profile.jpg",
+            nullable = true)
+        String authorProfileImageUrl,
     @Schema(
             description = "코스의 이동 수단입니다. 임시저장 코스는 미설정 시 null입니다.",
             example = "WALKING",
@@ -74,18 +83,8 @@ public record CourseDetailResponse(
         CourseVisibility visibility,
     @Schema(description = "코스 조회수입니다.", example = "10", requiredMode = Schema.RequiredMode.REQUIRED)
         int viewCount,
-    @Schema(description = "시·도 코드입니다.", example = "11", nullable = true) String sidoCode,
-    @Schema(description = "시·도 명칭입니다.", example = "서울특별시", nullable = true) String sidoName,
-    @Schema(
-            description = "시·군·구 코드입니다. 시·도 전체 대상인 경우 null을 반환합니다.",
-            example = "110",
-            nullable = true)
-        String sigunguCode,
-    @Schema(
-            description = "시·군·구 명칭입니다. 시·도 전체 대상인 경우 null을 반환합니다.",
-            example = "종로구",
-            nullable = true)
-        String sigunguName,
+    @Schema(description = "코스 지역 요약 정보입니다. 설정된 지역이 없으면 null입니다.", nullable = true)
+        CourseConditionRegionResponse region,
     @Schema(
             description = "코스 콘셉트 목록입니다.",
             example = "[\"감성적\", \"여유로움\"]",
@@ -132,16 +131,15 @@ public record CourseDetailResponse(
    * @param courseId 코스 식별자
    * @param title 코스 이름
    * @param courseSummary 코스 요약 설명
+   * @param authorDisplayName 작성자 공개 표시명
+   * @param authorProfileImageUrl 작성자 프로필 이미지 URL
    * @param transport 이동 수단
    * @param startAt 코스 시작 일시
    * @param endAt 코스 종료 일시
    * @param status 코스 상태
    * @param visibility 코스 공개 여부
    * @param viewCount 조회수
-   * @param sidoCode 시·도 코드
-   * @param sidoName 시·도 명칭
-   * @param sigunguCode 시·군·구 코드
-   * @param sigunguName 시·군·구 명칭
+   * @param region 코스 지역 요약 정보
    * @param themes 코스 콘셉트 목록
    * @param isWriter 작성자 여부
    * @param liked 좋아요 여부
@@ -168,16 +166,15 @@ public record CourseDetailResponse(
         result.courseId(),
         result.title(),
         result.courseSummary(),
+        result.authorDisplayName(),
+        result.authorProfileImageUrl(),
         result.transport(),
         result.startAt(),
         result.endAt(),
         result.status(),
         result.visibility(),
         result.viewCount(),
-        result.sidoCode(),
-        result.sidoName(),
-        result.sigunguCode(),
-        result.sigunguName(),
+        CourseConditionRegionResponse.from(result.region()),
         result.themes(),
         result.isWriter(),
         result.liked(),

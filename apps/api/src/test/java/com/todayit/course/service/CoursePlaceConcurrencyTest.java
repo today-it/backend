@@ -33,7 +33,6 @@ import org.springframework.test.context.ActiveProfiles;
 
 @ActiveProfiles("test")
 @SpringBootTest
-@DisplayName("코스 장소 추가 동시성")
 class CoursePlaceConcurrencyTest {
   @Autowired private CourseCommandService service;
   @Autowired private JdbcTemplate jdbc;
@@ -143,7 +142,7 @@ class CoursePlaceConcurrencyTest {
   @Test
   @DisplayName("같은 장소를 동시에 추가해도 두 번 제한을 지키고 초과 요청은 업무 오류로 거부한다")
   void preservesDuplicationLimitDuringConcurrentAdds() throws Exception {
-    // Given
+    // given
     service.addPlace(memberId, new AddCoursePlaceCommand(courseId, firstPlaceId, null, 30));
     CountDownLatch ready = new CountDownLatch(2);
     CountDownLatch start = new CountDownLatch(1);
@@ -168,7 +167,7 @@ class CoursePlaceConcurrencyTest {
       }
       awaitReadyAndStart(ready, start, attempts);
 
-      // When
+      // when
       awaitBlockedRequests();
       blocker.commit();
       List<AddCoursePlaceEntities> successes = new ArrayList<>();
@@ -181,7 +180,7 @@ class CoursePlaceConcurrencyTest {
         }
       }
 
-      // Then
+      // then
       assertThat(successes).hasSize(1);
       assertThat(successes.get(0).addedPlace().getOrder()).isEqualTo(2);
       assertThat(failures).hasSize(1);
@@ -203,6 +202,7 @@ class CoursePlaceConcurrencyTest {
   @ValueSource(booleans = {false, true})
   @DisplayName("타인의 장소 추가와 순서 변경은 작성자의 행 잠금을 기다리지 않고 거부된다")
   void rejectsNonWriterWithoutWaitingForOwnerLock(boolean reorder) throws Exception {
+    // given
     try (ExecutorService executor = Executors.newSingleThreadExecutor();
         Connection blocker = dataSource.getConnection()) {
       blocker.setAutoCommit(false);
@@ -214,6 +214,7 @@ class CoursePlaceConcurrencyTest {
           lock.executeQuery().close();
         }
 
+        // when
         Future<?> request =
             executor.submit(
                 () -> {
@@ -227,6 +228,7 @@ class CoursePlaceConcurrencyTest {
                   }
                 });
 
+        // then
         ExecutionException exception =
             assertThrows(ExecutionException.class, () -> request.get(5, TimeUnit.SECONDS));
         assertThat(exception.getCause())
@@ -246,6 +248,7 @@ class CoursePlaceConcurrencyTest {
   @Test
   @DisplayName("준비 시간 초과 시 시작 대기 중인 작업을 취소하고 시작 신호를 보내지 않는다")
   void cancelsWaitingTaskWhenPreparationTimesOut() throws Exception {
+    // given
     CountDownLatch ready = new CountDownLatch(2);
     CountDownLatch start = new CountDownLatch(1);
     try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
@@ -257,8 +260,13 @@ class CoursePlaceConcurrencyTest {
                 return null;
               });
 
-      assertThrows(AssertionError.class, () -> awaitReadyAndStart(ready, start, List.of(waiting)));
+      // when
+      AssertionError error =
+          assertThrows(
+              AssertionError.class, () -> awaitReadyAndStart(ready, start, List.of(waiting)));
 
+      // then
+      assertThat(error).isNotNull();
       assertThat(waiting.isCancelled()).isTrue();
       assertThat(start.getCount()).isEqualTo(1);
     }

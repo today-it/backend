@@ -1,13 +1,19 @@
 package com.todayit.course.service;
 
+import com.todayit.common.exception.InvalidRequestException;
 import com.todayit.common.pagination.PageResult;
 import com.todayit.course.entity.Course;
 import com.todayit.course.entity.CourseStatus;
+import com.todayit.course.entity.CourseTransport;
 import com.todayit.course.exception.CourseErrorCode;
 import com.todayit.course.exception.CourseException;
 import com.todayit.course.repository.CourseRepository;
+import com.todayit.course.repository.CourseScrapRepository;
+import com.todayit.course.service.model.CourseDurationFilter;
 import com.todayit.course.service.model.CourseResult;
+import com.todayit.course.service.model.CourseScrapSort;
 import com.todayit.course.service.model.CourseSort;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -24,14 +30,18 @@ public class CourseQueryService implements CoursePlaceQueryService {
   private static final Logger LOG = LoggerFactory.getLogger(CourseQueryService.class);
 
   private final CourseRepository courseRepository;
+  private final CourseScrapRepository courseScrapRepository;
 
   /**
    * 코스 조회에 필요한 Repository를 받습니다.
    *
    * @param courseRepository 코스 Repository
+   * @param courseScrapRepository 코스 스크랩 Repository
    */
-  public CourseQueryService(CourseRepository courseRepository) {
+  public CourseQueryService(
+      CourseRepository courseRepository, CourseScrapRepository courseScrapRepository) {
     this.courseRepository = courseRepository;
+    this.courseScrapRepository = courseScrapRepository;
   }
 
   /**
@@ -50,7 +60,95 @@ public class CourseQueryService implements CoursePlaceQueryService {
     if (course.getDeletedAt() != null || course.getStatus() == CourseStatus.DELETED) {
       throw new CourseException(CourseErrorCode.NOT_FOUND);
     }
+    LOG.info("코스 단건 조회: courseId={}, status={}", courseId, course.getStatus());
     return course;
+  }
+
+  /**
+   * 요청 콘셉트가 모두 등록되어 있는지 확인합니다.
+   *
+   * @param themes 중복 없는 콘셉트 이름 목록
+   * @throws InvalidRequestException 등록되지 않은 콘셉트가 포함된 경우
+   */
+  @Transactional(readOnly = true)
+  public void validateThemes(List<String> themes) {
+    if (!themes.isEmpty() && courseRepository.findThemesByNames(themes).size() != themes.size()) {
+      throw new InvalidRequestException("지원하지 않는 코스 콘셉트입니다.");
+    }
+  }
+
+  /**
+   * 공개·확정·미삭제 코스를 지역, 콘셉트, 이동수단 조건 및 페이징에 맞게 조회합니다.
+   *
+   * @param regionIds 지역 필터에 해당하는 지역 식별자 목록
+   * @param themes 콘셉트 이름 목록
+   * @param transport 이동수단 필터, 생략 시 null
+   * @param pageable 페이징 및 정렬 조건
+   * @return 공개 확정 코스 엔티티 페이지
+   */
+  @Transactional(readOnly = true)
+  public Page<Course> findPublicCourses(
+      List<Integer> regionIds, List<String> themes, CourseTransport transport, Pageable pageable) {
+    boolean regionFiltered = regionIds != null && !regionIds.isEmpty();
+    List<Integer> resolvedRegionIds = regionFiltered ? regionIds : List.of(-1);
+    boolean themeFiltered = themes != null && !themes.isEmpty();
+    List<String> resolvedThemes = themeFiltered ? themes : List.of("");
+
+    Page<Course> coursePage =
+        courseRepository.findPublicActiveCourses(
+            resolvedRegionIds, regionFiltered, resolvedThemes, themeFiltered, transport, pageable);
+    LOG.info(
+        "공개 코스 목록 조회: regionFiltered={}, themeFiltered={}, transport={}, page={}, size={}, resultCount={}",
+        regionFiltered,
+        themeFiltered,
+        transport,
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        coursePage.getNumberOfElements());
+    return coursePage;
+  }
+
+  /**
+   * 공개·확정·미삭제 코스를 지역, 콘셉트, 이동수단 조건 및 페이징에 맞게 조회합니다.
+   *
+   * @param regionIds 지역 필터에 해당하는 지역 식별자 목록
+   * @param themes 콘셉트 이름 목록
+   * @param transport 이동수단 필터, 생략 시 null
+   * @param duration 시작·종료 시각 차이에 적용할 시간 구간
+   * @param pageable 페이징 및 정렬 조건
+   * @return 공개 확정 코스 엔티티 페이지
+   */
+  @Transactional(readOnly = true)
+  public Page<Course> findPublicCoursesInDuration(
+      List<Integer> regionIds,
+      List<String> themes,
+      CourseTransport transport,
+      CourseDurationFilter duration,
+      Pageable pageable) {
+    boolean regionFiltered = regionIds != null && !regionIds.isEmpty();
+    List<Integer> resolvedRegionIds = regionFiltered ? regionIds : List.of(-1);
+    boolean themeFiltered = themes != null && !themes.isEmpty();
+    List<String> resolvedThemes = themeFiltered ? themes : List.of("");
+
+    Page<Course> coursePage =
+        courseRepository.findPublicActiveCoursesInDuration(
+            resolvedRegionIds,
+            regionFiltered,
+            resolvedThemes,
+            themeFiltered,
+            transport,
+            duration.minExclusiveMinutes(),
+            duration.maxInclusiveMinutes(),
+            pageable);
+    LOG.info(
+        "공개 코스 목록 조회: regionFiltered={}, themeFiltered={}, transport={}, page={}, size={}, resultCount={}",
+        regionFiltered,
+        themeFiltered,
+        transport,
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        coursePage.getNumberOfElements());
+    return coursePage;
   }
 
   /**
@@ -63,7 +161,9 @@ public class CourseQueryService implements CoursePlaceQueryService {
   @Transactional(readOnly = true)
   public long getAverageStayMinutes(int placeId) {
     Double average = courseRepository.findAverageStayMinutes(placeId);
-    return average == null ? 0 : Math.round(average);
+    long averageStayMinutes = average == null ? 0 : Math.round(average);
+    LOG.info("장소 평균 체류 시간 조회: placeId={}, averageStayMinutes={}", placeId, averageStayMinutes);
+    return averageStayMinutes;
   }
 
   /**
@@ -112,7 +212,33 @@ public class CourseQueryService implements CoursePlaceQueryService {
    */
   @Transactional(readOnly = true)
   public Page<Course> findMyCourses(String memberId, CourseStatus status, Pageable pageable) {
-    LOG.info("내 코스 엔티티 목록 조회: memberId={}, status={}, pageable={}", memberId, status, pageable);
+    LOG.info("내 코스 엔티티 목록 조회: status={}, pageable={}", status, pageable);
     return courseRepository.findByMemberIdAndStatus(memberId, status, pageable);
+  }
+
+  /**
+   * 회원이 활성 상태로 스크랩한 코스를 정렬 기준 및 페이징에 맞게 조회합니다.
+   *
+   * @param memberId 회원 식별자
+   * @param page 페이지 번호
+   * @param size 페이지 크기
+   * @param sort 스크랩 코스 정렬 기준
+   * @return 스크랩 코스 엔티티 페이지
+   */
+  @Transactional(readOnly = true)
+  public Page<Course> findScrappedCourses(
+      String memberId, int page, int size, CourseScrapSort sort) {
+    Pageable pageable = PageRequest.of(page, size);
+    Page<Course> coursePage =
+        sort == CourseScrapSort.OLDEST
+            ? courseScrapRepository.findScrappedCoursesOldest(memberId, pageable)
+            : courseScrapRepository.findScrappedCoursesLatest(memberId, pageable);
+    LOG.info(
+        "스크랩 코스 엔티티 목록 조회: page={}, size={}, sort={}, resultCount={}",
+        page,
+        size,
+        sort,
+        coursePage.getNumberOfElements());
+    return coursePage;
   }
 }
